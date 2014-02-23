@@ -1,8 +1,9 @@
-From 9cf049577ceb80ae12f041df8793349d3a6e0ee8 Mon Sep 17 00:00:00 2001
+From af5bac7ce41cb46262d37071d02c31dc9bbfcbc8 Mon Sep 17 00:00:00 2001
 From: xjljian <xjlxxx3@gmail.com>
-Date: Sat, 11 Jan 2014 00:22:59 +0800
-Subject: [PATCH] support legacy qcom audio variant
+Date: Sat, 22 Feb 2014 00:39:00 +0800
+Subject: [PATCH 2/2] support legacy qcom audio variant
 
+Change-Id: Ide323b16f3ac52fc1bc36aab4f2daa60bb7829df
 ---
  core/qcom_target.mk | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

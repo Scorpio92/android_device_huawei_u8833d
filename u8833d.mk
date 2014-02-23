@@ -86,6 +86,8 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     hwmac
 
+PRODUCT_PACKAGES += \
+    telephony-msim
 
 # For userdebug builds
 ADDITIONAL_DEFAULT_PROPERTIES += \

@@ -1,41 +1,9 @@
-From d8b51efbc77fdc9df6977c03f2e3aeaa73c3796b Mon Sep 17 00:00:00 2001
-From: Chirayu Desai <cdesai@cyanogenmod.org>
-Date: Wed, 13 Nov 2013 12:54:51 -0500
-Subject: [PATCH] Allow using Classic WebView
+From dd3c5366e20877a3a63f5af45847739aa500543a Mon Sep 17 00:00:00 2001
+From: xjljian <xjlxxx3@gmail.com>
+Date: Sun, 23 Feb 2014 19:18:07 +0800
+Subject: [PATCH 2/2] Allow using Classic WebView
 
-Squashed commit of the following:
-
-commit 1e64fc6008a5d00ef6a72b2a6f443019b261996a
-Author: Chirayu Desai <cdesai@cyanogenmod.org>
-Date:   Tue Nov 12 18:53:53 2013 +0530
-
-    WebViewFactory: Re-add support for switching WebView.
-
-    Change-Id: I6a4a62d64014a49e7bdf1bff3581aab79b680f15
-
-commit 069b610aa0446eb4181b73484ce9619221c7d36a
-Author: Chirayu Desai <cdesai@cyanogenmod.org>
-Date:   Tue Nov 12 18:41:43 2013 +0530
-
-    Revert "Delete the old WebView."
-
-    This reverts commit 94c0057d67c2e0a4b88a4f735388639210260d0e.
-
-commit 4f6f46a12f5c63100cbe7a582aff07a0529f1483
-Author: Chirayu Desai <cdesai@cyanogenmod.org>
-Date:   Tue Nov 12 18:41:39 2013 +0530
-
-    Revert "Restore 4 classes that were accidentally deleted"
-
-    This reverts commit 328dd7d7059c70b6776c6e29f9ea315f2f8aed3f.
-
-Change-Id: Iba847a04b515cada0eb32cc86026b60469108d80
-
-Revert "Remove old WebView classes from zygote preload list."
-
-This reverts commit 6067d1a3c7033f6714a60ac02a6b08d6568fe217.
-
-Change-Id: Iba847a04b515cada0eb32cc86026b60469108d80
+Change-Id: Ib2dfdd16abee51b2faf7788e412945267cc3ce18
 ---
  .../java/android/webkit/AccessibilityInjector.java |  976 +++
  .../webkit/AccessibilityInjectorFallback.java      |  636 ++
@@ -5403,7 +5371,7 @@ diff --git a/core/java/android/webkit/CookieSyncManager.java b/core/java/android
 index 13aa43f..154a290 100644
 --- a/core/java/android/webkit/CookieSyncManager.java
 +++ b/core/java/android/webkit/CookieSyncManager.java
-@@ -89,6 +89,10 @@ public static synchronized CookieSyncManager createInstance(Context context) {
+@@ -89,6 +89,10 @@ public final class CookieSyncManager extends WebSyncManager {
          if (context == null) {
              throw new IllegalArgumentException("Invalid context argument");
          }
@@ -5418,7 +5386,7 @@ diff --git a/core/java/android/webkit/DebugFlags.java b/core/java/android/webkit
 index b5ca8c1..524f610 100644
 --- a/core/java/android/webkit/DebugFlags.java
 +++ b/core/java/android/webkit/DebugFlags.java
-@@ -35,4 +35,22 @@
+@@ -35,4 +35,22 @@ public class DebugFlags {
      public static final boolean URL_UTIL = false;
      public static final boolean WEB_SYNC_MANAGER = false;
  
@@ -26635,7 +26603,7 @@ diff --git a/core/java/android/webkit/WebViewFactory.java b/core/java/android/we
 index b9131bf..cb08cd5 100644
 --- a/core/java/android/webkit/WebViewFactory.java
 +++ b/core/java/android/webkit/WebViewFactory.java
-@@ -29,6 +29,12 @@
+@@ -29,6 +29,12 @@ import android.util.Log;
   */
  public final class WebViewFactory {
  
@@ -26648,7 +26616,7 @@ index b9131bf..cb08cd5 100644
      private static final String CHROMIUM_WEBVIEW_FACTORY =
              "com.android.webview.chromium.WebViewChromiumFactoryProvider";
  
-@@ -52,32 +58,33 @@
+@@ -52,32 +58,33 @@ public final class WebViewFactory {
      private static WebViewFactoryProvider sProviderInstance;
      private static final Object sProviderLock = new Object();
  
@@ -26694,7 +26662,7 @@ index b9131bf..cb08cd5 100644
              if (sProviderInstance != null) return sProviderInstance;
  
              Class<WebViewFactoryProvider> providerClass;
-@@ -111,7 +118,25 @@ static WebViewFactoryProvider getProvider() {
+@@ -111,7 +118,25 @@ public final class WebViewFactory {
          }
      }
  
@@ -29631,7 +29599,7 @@ diff --git a/core/java/com/android/internal/app/ProcessStats.java b/core/java/co
 index 0cad33c..c4a4962 100644
 --- a/core/java/com/android/internal/app/ProcessStats.java
 +++ b/core/java/com/android/internal/app/ProcessStats.java
-@@ -1054,7 +1054,7 @@ public boolean evaluateSystemProperties(boolean update) {
+@@ -1054,7 +1054,7 @@ public final class ProcessStats implements Parcelable {
                  mRuntime = runtime;
              }
          }
@@ -29711,5 +29679,5 @@ index 467da25..d161bc1 100644
  android.widget.AbsListView$1
  android.widget.AbsListView$AdapterDataSetObserver
 -- 
-1.8.5.1
+1.8.1.2
 

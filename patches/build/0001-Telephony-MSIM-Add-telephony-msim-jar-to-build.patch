@@ -1,0 +1,29 @@
+From 10301622be1330af13d8231652119b3d16d6f39b Mon Sep 17 00:00:00 2001
+From: xjljian <xjlxxx3@gmail.com>
+Date: Sat, 22 Feb 2014 00:36:54 +0800
+Subject: [PATCH 1/2] Telephony(MSIM) : Add telephony-msim jar to build
+
+Change-Id: I196395cd0e2a6a4716397cfd8133b83fea808f69
+---
+ target/product/core_base.mk | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/target/product/core_base.mk b/target/product/core_base.mk
+index 603acad..14c350a 100644
+--- a/target/product/core_base.mk
++++ b/target/product/core_base.mk
+@@ -63,8 +63,9 @@ PRODUCT_PACKAGES += \
+     requestsync \
+     screenrecord \
+     telephony-common \
+-    voip-common
++    voip-common \
++    telephony-msim
+ 
+ $(call inherit-product, $(SRC_TARGET_DIR)/product/core_minimal.mk)
+ # Override the PRODUCT_BOOT_JARS set in core_minimal.mk
+-PRODUCT_BOOT_JARS := core:conscrypt:okhttp:core-junit:bouncycastle:ext:framework:framework2:telephony-common:voip-common:mms-common:android.policy:services:apache-xml:webviewchromium
++PRODUCT_BOOT_JARS := core:conscrypt:okhttp:core-junit:bouncycastle:ext:framework:framework2:telephony-common:voip-common:mms-common:android.policy:services:apache-xml:webviewchromium:telephony-msim
+-- 
+1.8.1.2
+

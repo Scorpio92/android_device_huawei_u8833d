@@ -1,0 +1,3258 @@
+From 905f64e52f9c1fec98f92ef664477afb896e393d Mon Sep 17 00:00:00 2001
+From: xjljian <xjlxxx3@gmail.com>
+Date: Sun, 23 Feb 2014 10:30:49 +0800
+Subject: [PATCH 1/2] Add support for MultiSim
+
+---
+ Android.mk                                         |   2 +-
+ AndroidManifest.xml                                |  64 ++
+ res/drawable-hdpi/ic_settings_sim.png              | Bin 0 -> 1002 bytes
+ res/drawable-mdpi/ic_settings_sim.png              | Bin 0 -> 1002 bytes
+ res/layout/select_subscription.xml                 |  49 ++
+ res/values/arrays.xml                              |   8 +
+ res/values/cm_arrays.xml                           |   2 +-
+ res/values/cm_strings.xml                          |   5 +-
+ res/values/strings.xml                             |  71 ++-
+ res/xml/development_prefs.xml                      |   6 -
+ res/xml/device_info_msim_status.xml                |  81 +++
+ res/xml/device_info_subscription_status.xml        |  91 +++
+ res/xml/multi_sim_settings.xml                     |  73 +++
+ res/xml/security_settings_misc.xml                 |   3 +-
+ res/xml/settings_headers.xml                       |  11 +
+ src/com/android/settings/ApnEditor.java            |  34 +-
+ src/com/android/settings/ApnSettings.java          |  59 +-
+ src/com/android/settings/CreateShortcut.java       |   8 +-
+ src/com/android/settings/DataUsageSummary.java     | 135 +++-
+ src/com/android/settings/DeviceInfoSettings.java   |  10 +-
+ src/com/android/settings/IccLockSettings.java      |  18 +-
+ src/com/android/settings/MultiSimSettings.java     | 677 +++++++++++++++++++++
+ src/com/android/settings/RadioInfo.java            |  11 +
+ src/com/android/settings/SecuritySettings.java     |  63 +-
+ src/com/android/settings/SelectSubscription.java   |  95 +++
+ src/com/android/settings/Settings.java             |   4 +
+ src/com/android/settings/WirelessSettings.java     |  20 +
+ src/com/android/settings/deviceinfo/Status.java    |  34 +-
+ .../settings/deviceinfo/msim/MSimStatus.java       | 379 ++++++++++++
+ .../deviceinfo/msim/MSimSubscriptionStatus.java    | 365 +++++++++++
+ 30 files changed, 2311 insertions(+), 67 deletions(-)
+ create mode 100644 res/drawable-hdpi/ic_settings_sim.png
+ create mode 100644 res/drawable-mdpi/ic_settings_sim.png
+ create mode 100644 res/layout/select_subscription.xml
+ create mode 100644 res/xml/device_info_msim_status.xml
+ create mode 100644 res/xml/device_info_subscription_status.xml
+ create mode 100644 res/xml/multi_sim_settings.xml
+ create mode 100644 src/com/android/settings/MultiSimSettings.java
+ create mode 100644 src/com/android/settings/SelectSubscription.java
+ create mode 100644 src/com/android/settings/deviceinfo/msim/MSimStatus.java
+ create mode 100644 src/com/android/settings/deviceinfo/msim/MSimSubscriptionStatus.java
+
+diff --git a/Android.mk b/Android.mk
+index 3a68cf6..d112c61 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -1,7 +1,7 @@
+ LOCAL_PATH:= $(call my-dir)
+ include $(CLEAR_VARS)
+ 
+-LOCAL_JAVA_LIBRARIES := bouncycastle conscrypt telephony-common
++LOCAL_JAVA_LIBRARIES := bouncycastle conscrypt telephony-common telephony-msim
+ LOCAL_STATIC_JAVA_LIBRARIES := android-support-v4 android-support-v13 jsr305 libGoogleAnalyticsV2
+ 
+ LOCAL_MODULE_TAGS := optional
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 8e3f4c8..9b7b224 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -231,6 +231,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.wifi.WifiSettings" />
+@@ -382,6 +383,7 @@
+                 <action android:name="android.settings.BLUETOOTH_SETTINGS" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+                 <category android:name="android.intent.category.DEFAULT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+@@ -423,6 +425,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.TetherSettings" />
+@@ -480,6 +483,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.vpn2.VpnSettings" />
+@@ -671,6 +675,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.SoundSettings" />
+@@ -700,6 +705,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.DisplaySettings" />
+@@ -718,6 +724,20 @@
+                 android:resource="@id/display_settings" />
+         </activity-alias>
+ 
++        <!-- Multi Sim (Subscription) Settings -->
++        <activity android:name="MultiSimSettings"
++                android:label="@string/multi_sim_settings_title"
++                android:process="com.android.phone"
++                android:clearTaskOnLaunch="true">
++           <intent-filter>
++                <action android:name="android.intent.action.MAIN" />
++                <action android:name="com.android.settings.MULTI_SIM_SETTINGS" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.VOICE_LAUNCH" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
++            </intent-filter>
++        </activity>
++
+         <activity android:name="Settings$DeviceInfoSettingsActivity"
+                 android:theme="@style/Theme.DialogWhenLarge"
+                 android:label="@string/device_info_settings"
+@@ -778,6 +798,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.applications.ManageApplications" />
+@@ -902,6 +923,7 @@
+                 <action android:name="android.intent.action.MAIN" />
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.NotificationStation" />
+@@ -917,6 +939,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.applications.AppOpsSummary" />
+@@ -937,6 +960,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.location.LocationSettings" />
+@@ -984,6 +1008,7 @@
+                 <action android:name="com.android.settings.TRUSTED_CREDENTIALS_USER" />
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.TrustedCredentialsSettings" />
+@@ -1104,6 +1129,7 @@
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="android.intent.category.VOICE_LAUNCH" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.accessibility.AccessibilitySettings" />
+@@ -1171,6 +1197,30 @@
+             android:windowSoftInputMode="stateVisible|adjustResize"/>
+ 
+         <!-- Runs in the phone process since it needs access to the Phone object -->
++        <activity android:name=".deviceinfo.MSimSubscriptionStatus"
++                android:label="@string/device_status_activity_title"
++                android:theme="@android:style/Theme.Holo.DialogWhenLarge"
++                android:process="com.android.phone">
++            <intent-filter>
++                <action android:name="android.intent.action.MAIN" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.VOICE_LAUNCH" />
++            </intent-filter>
++        </activity>
++
++        <!-- Runs in the phone process since it needs access to the Phone object -->
++        <activity android:name=".deviceinfo.MSimStatus"
++                android:label="@string/device_status_activity_title"
++                android:theme="@android:style/Theme.Holo.DialogWhenLarge"
++                android:process="com.android.phone">
++            <intent-filter>
++                <action android:name="android.intent.action.MAIN" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.VOICE_LAUNCH" />
++            </intent-filter>
++        </activity>
++
++        <!-- Runs in the phone process since it needs access to the Phone object -->
+         <activity android:name=".deviceinfo.Status"
+                 android:label="@string/device_status_activity_title"
+                 android:theme="@style/Theme.DialogWhenLarge"
+@@ -1601,6 +1651,7 @@
+                 <action android:name="android.intent.action.POWER_USAGE_SUMMARY" />
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.fuelgauge.PowerUsageSummary" />
+@@ -1845,6 +1896,7 @@
+                 <action android:name="android.intent.action.MAIN" />
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.DataUsageSummary" />
+@@ -1852,6 +1904,17 @@
+                 android:resource="@id/wireless_settings" />
+         </activity>
+ 
++        <!-- Select Subscription (SUB1 or SUB2) Screen -->
++        <activity android:name=".SelectSubscription"
++                android:label="@string/subs_settings"
++                android:process="com.android.phone"
++                android:clearTaskOnLaunch="true">
++            <intent-filter>
++                <action android:name="android.intent.action.MAIN" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.VOICE_LAUNCH" />
++            </intent-filter>
++        </activity>
+         <activity android:name="Settings$DreamSettingsActivity"
+                 android:uiOptions="splitActionBarWhenNarrow"
+                 android:label="@string/screensaver_settings_title"
+@@ -1862,6 +1925,7 @@
+                 <action android:name="android.settings.DREAM_SETTINGS" />
+                 <category android:name="android.intent.category.DEFAULT" />
+                 <category android:name="com.android.settings.SHORTCUT" />
++                <category android:name="codeaurora.intent.filter.settings.multisim.SHORTCUT" />
+             </intent-filter>
+             <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
+                 android:value="com.android.settings.DreamSettings" />
+diff --git a/res/drawable-hdpi/ic_settings_sim.png b/res/drawable-hdpi/ic_settings_sim.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..b5da8c9ca7362b96a8d3112f4409c216297700c5
+GIT binary patch
+literal 1002
+zcmV<G0~P#<P)<h;3K|Lk000e1NJLTq001BW001Be1^@s6b9#F800009a7bBm000ie
+z000ie0hKEb8vp<UoJmAMR9J<@SIbHxK@>gp>P{lMNN^*fq7WkaG{3+v(WPJDKe!Z^
+zZrlYG#0YKPX*%6icNS7L{ir-=hB**Os=Di*`>1nofd35UTfDx$roFvAF!r;}7%O}S
+zfHX~Ej47-sr68q5mSrHK!n-doFSxtAtJsr10{i>>Fvb)P;hZCmW1O6vAj>jLCKJSQ
+zj8>}!#u&8Ln9XKrHk$x|@pz2!c#K-D2F4hUkB_|(@Di|w^Jq4k7>!1_yu3t`B#5F2
+z-{0S8x7%QhA<HtnzP_T<=>PyeK0YuU4)OK%1<pBoy`Gl<_pX*;jKTT&Il?eRk|Y&^
+zK@fn5V2p7gXN=+S@DN8wN6=a?J=;sb=F~z6fglK=wJy{H5kUw6&N;Fy^BSntYAc=F
+zC<2Tzq-k0)!a0W!0%@97igZ(KR0GBsXPk2mA_C_eN+}SLD^kvRAq9B{wj#h7E09Rj
+z)Dd}ldIAxFh+Hvp&Y`tNk|dZ+CIEmqj?r$ncZ)zC);IvPS}mNOo;vUIQ7L;KMG>Tw
+zh4gGifQX>AMwVreQaVFcY_!%8LO=-N_JH5QW7pSV=`AqERIU#ZAqawkNZA@FKj&ND
+zm;ezK<kZ3z-Ku+CKF2z=jEpx0X_{7y+i+{GUC!;{HvINCP)tb}hT9P+8)u9`DTU9^
+zPmD$*06>x?n9t{EHk(c-rqd}}trmy~v)K%1XJ-&X>{f(%<F@FGG3a)?AR<IjgeZ#8
+z>2$yt!+bu+`};e(-7bKiUJwL9;THL@Rtcq)&O-}dgvuYQlIsd_B?0TbuO`aI?QBpc
+zZl77|;3@)AN-P!&Xsw;Xts-j?1c8(6!C<iRy`==ClrY9P&w9Nc=JUBTX2V?W14=0<
+zrC^M~+uIxBICes|F##KPd*2yj7>!2ITI1p2!PNv2q2KSj-jQV)rqd|^I2{RsV7CbP
+z#6}2##bQw?F#8<m9F0c9=|sK;wkEJn>GI9T!iIj^xnQXjuY%S3JR#0`WlG+ez&hkd
+zGJ92h#Qqt9d?(yA*ME(G^^%C7l&Yv*d79dZK)>H#I^|jt`Oy3J{)oWM%?%q4hZT9X
+zV2q(&uX_iPd~4pB007+H-m<}9P`Q%p`g>kI^SHRU*p2}36N$-Wf?BPHMx%jxy^e!}
+z12h^9NGTzugi;D&7$OWq*8}YEV)vz#cz%BN+Sn*rS65eL|6Fd9U;FIi<0J0x@4YYn
+Y0wC_~QBBXcY5)KL07*qoM6N<$f>8U+MgRZ+
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/drawable-mdpi/ic_settings_sim.png b/res/drawable-mdpi/ic_settings_sim.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..b5da8c9ca7362b96a8d3112f4409c216297700c5
+GIT binary patch
+literal 1002
+zcmV<G0~P#<P)<h;3K|Lk000e1NJLTq001BW001Be1^@s6b9#F800009a7bBm000ie
+z000ie0hKEb8vp<UoJmAMR9J<@SIbHxK@>gp>P{lMNN^*fq7WkaG{3+v(WPJDKe!Z^
+zZrlYG#0YKPX*%6icNS7L{ir-=hB**Os=Di*`>1nofd35UTfDx$roFvAF!r;}7%O}S
+zfHX~Ej47-sr68q5mSrHK!n-doFSxtAtJsr10{i>>Fvb)P;hZCmW1O6vAj>jLCKJSQ
+zj8>}!#u&8Ln9XKrHk$x|@pz2!c#K-D2F4hUkB_|(@Di|w^Jq4k7>!1_yu3t`B#5F2
+z-{0S8x7%QhA<HtnzP_T<=>PyeK0YuU4)OK%1<pBoy`Gl<_pX*;jKTT&Il?eRk|Y&^
+zK@fn5V2p7gXN=+S@DN8wN6=a?J=;sb=F~z6fglK=wJy{H5kUw6&N;Fy^BSntYAc=F
+zC<2Tzq-k0)!a0W!0%@97igZ(KR0GBsXPk2mA_C_eN+}SLD^kvRAq9B{wj#h7E09Rj
+z)Dd}ldIAxFh+Hvp&Y`tNk|dZ+CIEmqj?r$ncZ)zC);IvPS}mNOo;vUIQ7L;KMG>Tw
+zh4gGifQX>AMwVreQaVFcY_!%8LO=-N_JH5QW7pSV=`AqERIU#ZAqawkNZA@FKj&ND
+zm;ezK<kZ3z-Ku+CKF2z=jEpx0X_{7y+i+{GUC!;{HvINCP)tb}hT9P+8)u9`DTU9^
+zPmD$*06>x?n9t{EHk(c-rqd}}trmy~v)K%1XJ-&X>{f(%<F@FGG3a)?AR<IjgeZ#8
+z>2$yt!+bu+`};e(-7bKiUJwL9;THL@Rtcq)&O-}dgvuYQlIsd_B?0TbuO`aI?QBpc
+zZl77|;3@)AN-P!&Xsw;Xts-j?1c8(6!C<iRy`==ClrY9P&w9Nc=JUBTX2V?W14=0<
+zrC^M~+uIxBICes|F##KPd*2yj7>!2ITI1p2!PNv2q2KSj-jQV)rqd|^I2{RsV7CbP
+z#6}2##bQw?F#8<m9F0c9=|sK;wkEJn>GI9T!iIj^xnQXjuY%S3JR#0`WlG+ez&hkd
+zGJ92h#Qqt9d?(yA*ME(G^^%C7l&Yv*d79dZK)>H#I^|jt`Oy3J{)oWM%?%q4hZT9X
+zV2q(&uX_iPd~4pB007+H-m<}9P`Q%p`g>kI^SHRU*p2}36N$-Wf?BPHMx%jxy^e!}
+z12h^9NGTzugi;D&7$OWq*8}YEV)vz#cz%BN+Sn*rS65eL|6Fd9U;FIi<0J0x@4YYn
+Y0wC_~QBBXcY5)KL07*qoM6N<$f>8U+MgRZ+
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/layout/select_subscription.xml b/res/layout/select_subscription.xml
+new file mode 100644
+index 0000000..7fca960
+--- /dev/null
++++ b/res/layout/select_subscription.xml
+@@ -0,0 +1,49 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
++
++     Redistribution and use in source and binary forms, with or without
++     modification, are permitted provided that the following conditions are
++     met:
++         * Redistributions of source code must retain the above copyright
++           notice, this list of conditions and the following disclaimer.
++         * Redistributions in binary form must reproduce the above
++           copyright notice, this list of conditions and the following
++           disclaimer in the documentation and/or other materials provided
++           with the distribution.
++         * Neither the name of The Linux Foundation, Inc. nor the names of its
++           contributors may be used to endorse or promote products derived
++           from this software without specific prior written permission.
++
++     THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
++     WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
++     ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
++     BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++     CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++     SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++     WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
++     OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++     IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++-->
++<TabHost xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@android:id/tabhost"
++    android:layout_width="fill_parent"
++    android:layout_height="fill_parent">
++
++    <LinearLayout
++        android:orientation="vertical"
++        android:layout_width="fill_parent"
++        android:layout_height="fill_parent"
++        android:padding="5dp">
++        <TabWidget
++            android:id="@android:id/tabs"
++            android:layout_width="fill_parent"
++            android:layout_height="wrap_content"/>
++        <FrameLayout
++            android:id="@android:id/tabcontent"
++            android:layout_width="fill_parent"
++            android:layout_height="fill_parent"
++            android:padding="5dp"/>
++    </LinearLayout>
++</TabHost>
+diff --git a/res/values/arrays.xml b/res/values/arrays.xml
+index 3e24ab7..76afa53 100644
+--- a/res/values/arrays.xml
++++ b/res/values/arrays.xml
+@@ -1162,4 +1162,12 @@
+         <!-- Memory is critical. -->
+         <item>critical</item>
+     </string-array>
++
++    <!-- Display settings.  Entries for each type of Subscription. -->
++    <string-array name="multi_sim_entries">
++        <item> Subscription 1 </item>
++        <item> Subscription 2 </item>
++        <item> Subscription 3 </item>
++    </string-array>
++
+ </resources>
+diff --git a/res/values/cm_arrays.xml b/res/values/cm_arrays.xml
+index 4e71d11..2efba68 100644
+--- a/res/values/cm_arrays.xml
++++ b/res/values/cm_arrays.xml
+@@ -649,7 +649,7 @@
+         <item>Read calendar</item>
+         <item>Modify calendar</item>
+         <item>Location</item>
+-        <item>Notification/Toast</item>
++        <item>Post notification</item>
+         <item>Location</item>
+         <item>Call phone</item>
+         <item>Read SMS DB</item>
+diff --git a/res/values/cm_strings.xml b/res/values/cm_strings.xml
+index 2ce698e..e53f512 100644
+--- a/res/values/cm_strings.xml
++++ b/res/values/cm_strings.xml
+@@ -401,7 +401,7 @@
+     <string name="auto_brightness_preview">Preview</string>
+     <string name="auto_brightness_preview_dialog_title">Brightness curve preview</string>
+     <string name="auto_brightness_help_dialog_title">Help</string>
+-    <string name="auto_brightness_help_text"><b>How is brightness calculated?</b>\n\nThe brightness curve is calculated by performing a <i>cubic spline interpolation</i> on a given number of <i>control points</i>. It\u0027s not a \u2018bucket-type\u2019 calculation where screen brightness will stay constant for a specific range of ambient brightness. That way, small changes in ambient brightness do not cause a large jump in screen brightness; however, it can be a little hard to predict the exact consequences of changing control points.\nTo help with that, a preview of the calculated curve can be examined. Please note that the preview shows the curve in <i>logarithmic</i> scale, so that all control points can be shown distinctively. When using a linear scale, it wouldn\u0027t be possible to distinguish the tendentially more important control points in the lower range of ambient brightness.\n\n<b>How to edit the brightness curve?</b>\n\nEach line in the brightness list corresponds to one <i>control point</i> of the brightness curve. To edit the brightness level of the point, you can use the slider present in each line. The screen brightness will be changed accordingly while touching the slider to give a preview of the light level.\nAdditional options are available by long-pressing a line. By selecting \u2018Edit\u2019, you can both edit the ambient brightness level of the control point as well as manually input the desired screen brightness. Selecting \u2018Split\u2019 allows you to to duplicate one line into two in order to insert additional control points. \u2018Remove\u2019 deletes the selected line.</string>
++    <string name="auto_brightness_help_text"><b>How is brightness calculated?</b>\n\nThe brightness curve is calculated by performing a <i>cubic spline interpolation</i> on a given number of <i>control points</i>. It\u2018s not a \u2018bucket-type\u2019 calculation where screen brightness will stay constant for a specific range of ambient brightness. That way, small changes in ambient brightness do not cause a large jump in screen brightness; however, it can be a little hard to predict the exact consequences of changing control points.\nTo help with that, a preview of the calculated curve can be examined. Please note that the preview shows the curve in <i>logarithmic</i> scale, so that all control points can be shown distinctively. When using a linear scale, it wouldn\u2018t be possible to distinguish the tendentially more important control points in the lower range of ambient brightness.\n\n<b>How to edit the brightness curve?</b>\n\n Each line in the brightness list corresponds to one <i>control point</i> of the brightness curve. To edit the brightness level of the point, you can use the slider present in each line. The screen brightness will be changed accordingly while touching the slider to give a preview of the light level.\nAdditional options are available by long-pressing a line. By selecting \u2018Edit\u2019, you can both edit the ambient brightness level of the control point as well as manually input the desired screen brightness. Selecting \u2018Split\u2019 allows you to to duplicate one line into two in order to insert additional control points. \u2018Remove\u2019 deletes the selected line.</string>
+     <string name="auto_brightness_sensitivity_title">Adjustment sensitivity</string>
+     <string name="auto_brightness_sensitivity_verylow">Very low</string>
+     <string name="auto_brightness_sensitivity_low">Low</string>
+@@ -999,7 +999,4 @@
+     <string name="app_ops_reset_confirm_title">Confirm counters reset</string>
+     <string name="app_ops_reset_confirm_mesg">Are you sure you wish to reset AppOps counters?</string>
+ 
+-    <!-- EdgeGesture service -->
+-    <string name="edge_gesture_service_title">Block gesture touch events</string>
+-    <string name="edge_gesture_service_summary">Don\'t send touch events for navigation and status bar gestures to apps</string>
+ </resources>
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index dc02079..de8bbe9 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -1993,7 +1993,11 @@
+     <!-- About tablet screen, summary of the item that takes you to tablet status screen -->
+     <string name="device_status_summary" product="tablet">Status of the battery, network, and other information</string>
+     <!-- About phone screen, summary of the item to go into the phone status screen -->
+-    <string name="device_status_summary" product="default">Phone number, signal, etc.</string>
++    <string name="device_status_summary" product="default">Battery Status, battery level, etc.</string>
++    <!-- About phone screen, summary of the item to go into the phone status screen -->
++    <string name="device_additional_status_summary">Phone number, Signal, IMEI, etc.</string>
++    <!-- In About phone->Status screen, title of the item to go into the subscription status screen -->
++    <string name="device_additional_status">Additional Status Info</string>
+     <!-- Main settings screen item's title to go into the storage settings screen [CHAR LIMIT=25] -->
+     <string name="storage_settings" >Storage</string>
+     <!-- Storage settings screen title -->
+@@ -3811,7 +3815,7 @@
+     <!-- Text spoken by the TTS engine as an example if the engine doesn't provide sample text [CHAR LIMIT=100] -->
+     <string name="tts_default_sample_string">This is an example of speech synthesis</string>
+     <!-- On main TTS Settings screen, title of a field explaining current TTS engine status for
+-	 current default language [CHAR LIMIT=50] -->
++     current default language [CHAR LIMIT=50] -->
+     <string name="tts_status_title">Default language status</string>
+     <!-- On main TTS Settings screen, current TTS engine status for the current default language,
+          selected language is fully supported by the engine [CHAR LIMIT=150]-->
+@@ -3823,7 +3827,7 @@
+          selected language is not supported by the engine [CHAR LIMIT=150] -->
+     <string name="tts_status_not_supported"><xliff:g id="locale" example="English (United States)">%1$s</xliff:g> is not supported</string>
+     <!-- On main TTS Settings screen, current TTS engine status for the current default language,
+-	 tts engine is queried for status [CHAR LIMIT=150] -->
++     tts engine is queried for status [CHAR LIMIT=150] -->
+     <string name="tts_status_checking">Checking...</string>
+     <!-- On main TTS Settings screen, text for divider under which all TTS engines are listed -->
+     <string name="tts_engines_section">Engines</string>
+@@ -4451,6 +4455,7 @@
+     <string name="data_usage_tab_ethernet">Ethernet</string>
+     <!-- Tab title for showing combined mobile data usage. [CHAR LIMIT=10] -->
+     <string name="data_usage_tab_mobile">Mobile</string>
++    <string name="data_usage_tab_slot">SIM </string>
+     <!-- Tab title for showing 4G data usage. [CHAR LIMIT=10] -->
+     <string name="data_usage_tab_4g">4G</string>
+     <!-- Tab title for showing 2G and 3G data usage. [CHAR LIMIT=10] -->
+@@ -4665,6 +4670,56 @@
+ 
+     <!-- Representation of a numerical percentage. [CHAR LIMIT=8] -->
+     <string name="percentage"><xliff:g id="number" example="30">%d</xliff:g>%%</string>
++    <!-- Multi Sim Settings screen, Select Sub label -->
++    <string name="sel_sub_title">Configure Subscriptions </string>
++    <!-- Multi Sim Settings screen, Select Sub Summary label -->
++    <string name="sel_sub_summary">Select the Subscription SUB1, SUB2, etc..</string>
++    <!-- Select Subscription screen title -->
++    <string name="select_subscription">Select Subscription</string>
++    <!-- String displayed when no SIM info is present and Multi SIM settings is accessed-->
++    <string name="no_sim_info">SIM card info not available.\nMenu cannot be accessed</string>
++    <!-- Subscription settings title -->
++    <string name="subs_settings">SUBS Status</string>
++
++    <!-- Main settings screen, Multi Sim settings title for item to go into the Multi settings -->
++    <string name="multi_sim_settings_title">Multi Sim Settings</string>
++    <!-- Main settings screen, Multi Sim settings summary for item to go into Multi settings -->
++    <string name="multi_sim_settings_summary">Set up Multi Sim Settings for Voice, Data and SMS</string>
++
++    <!-- Multi Sim Settings screen, Voice box label -->
++    <string name="voice_title">Voice/USSD/MMI</string>
++    <!-- Multi Sim Settings screen, Voice Summary label -->
++    <string name="voice_summary">Select Subscription for Voice Call</string>
++
++    <!-- Multi Sim Settings screen, Data box label -->
++    <string name="data_title">Data Call</string>
++    <!-- Multi Sim Settings screen, Voice Summary label -->
++    <string name="data_summary">Select Subscription for Data Call</string>
++
++    <!-- Multi Sim Settings screen, SMS box label -->
++    <string name="sms_title">SMS </string>
++    <!-- Multi Sim Settings screen, Voice Summary label -->
++    <string name="sms_summary">Select the Subscription for Sending SMS</string>
++
++    <!-- Multi Sim Settings screen, Set DDS progress dialog message -->
++    <string name="set_data_subscription_progress">Set data subscription in progress</string>
++    <!-- Multi Sim Settings screen, Set DDS success message -->
++    <string name="set_dds_success">Set data subscription success</string>
++    <!-- Multi Sim Settings screen, Set DDS failure message -->
++    <string name="set_dds_failed">Error in set data subscription.  Clean up any existing data connection and try again.</string>
++    <!-- Multi Sim Settings screen, Set DDS error message -->
++    <string name="set_dds_error">Error in set data subscription.</string>
++    <!-- Multi Sim Settings screen, Set SMS error message -->
++    <string name="set_sms_error">Error in set sms subscription. Subscription not active.</string>
++    <!-- Multi Sim Settings screen, Set VOICE error message -->
++    <string name="set_voice_error">Error in set voice subscription. Subscription not active.</string>
++    <!-- Multi Sim Settings screen, Set PRIORITY SUB error message -->
++    <string name="set_priority_sub_error">Error in set priority subscription. Subscription not active.</string>
++
++
++    <!--Prompt, used only for voice-->
++    <string name="prompt">Prompt</string>
++    <string name="prompt_user">Prompt User</string>
+ 
+     <!-- A menu item in "About phone" that allows the user to update the phone with settings
+     from their cell phone carrier. The use of the string is similar to the string
+@@ -4691,6 +4746,16 @@
+     <string name="ssl_ca_cert_warning_message">A third party is capable of monitoring your network activity, including emails, apps, and secure websites.\n\nA trusted credential installed on your device is making this possible.</string>
+     <!-- Label on button that will take the user to the Trusted Credentials settings page.  [CHAR LIMIT=NONE]-->
+     <string name="ssl_ca_cert_settings_button">Check trusted credentials</string>
++    <!-- Tune Away settings -->
++    <string name="tune_away_title">Tune Away</string>
++    <string name="tune_away_Default">Disable</string>
++    <!-- Summary for the TuneAway status displayed in Multi SIM Settings -->
++    <string name="tune_away_enabled">TuneAway Enabled!</string>
++    <string name="tune_away_disabled">TuneAway Disabled!</string>
++
++    <!-- Priority subscription settings -->
++    <string name="priority_sub_title">Priority Subscription</string>
++    <string name="priority_sub_summary">Select Priority Subscription</string>
+ 
+     <!-- User settings -->
+     <skip/>
+diff --git a/res/xml/development_prefs.xml b/res/xml/development_prefs.xml
+index b9f77f2..5318e25 100644
+--- a/res/xml/development_prefs.xml
++++ b/res/xml/development_prefs.xml
+@@ -164,12 +164,6 @@
+             android:title="@string/pointer_location"
+             android:summary="@string/pointer_location_summary"/>
+ 
+-        <com.android.settings.cyanogenmod.SystemSettingCheckBoxPreference
+-            android:key="edge_service_for_gestures"
+-            android:title="@string/edge_gesture_service_title"
+-            android:summary="@string/edge_gesture_service_summary"
+-            android:defaultValue="1"/>
+-
+     </PreferenceCategory>
+ 
+     <PreferenceCategory android:key="debug_drawing_category"
+diff --git a/res/xml/device_info_msim_status.xml b/res/xml/device_info_msim_status.xml
+new file mode 100644
+index 0000000..3e123a6
+--- /dev/null
++++ b/res/xml/device_info_msim_status.xml
+@@ -0,0 +1,81 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (c) 2011-13 The Linux Foundation. All rights reserved
++     Not a Contribution.
++     Copyright (C) 2008 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:title="@string/device_status_activity_title">
++
++    <!-- for MultiSim -->
++    <PreferenceScreen
++        android:key="button_aboutphone_msim_status"
++        android:title="@string/subs_settings"
++        android:persistent="false">
++        <intent android:action="android.intent.action.MAIN"
++            android:targetPackage="com.android.settings"
++            android:targetClass="com.android.settings.SelectSubscription" />
++    </PreferenceScreen>
++    <Preference android:key="battery_status"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/battery_status_title"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="battery_level"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/battery_level_title"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="network_type"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_network_type"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="data_state"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_data_state"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="wifi_ip_address"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/wifi_advanced_ip_address_title"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="wifi_mac_address"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_wifi_mac_address"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="bt_address"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_bt_address"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="serial_number"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_serial_number"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="up_time"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_up_time"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="wimax_mac_address"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_wimax_mac_address"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++</PreferenceScreen>
+diff --git a/res/xml/device_info_subscription_status.xml b/res/xml/device_info_subscription_status.xml
+new file mode 100644
+index 0000000..0040f68
+--- /dev/null
++++ b/res/xml/device_info_subscription_status.xml
+@@ -0,0 +1,91 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (c) 2011-2013, The Linux Foundation. All rights reserved
++     Not a Contribution.
++     Copyright (C) 2008 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:title="@string/device_additional_status">
++
++    <Preference android:key="operator_name"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_operator"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="signal_strength"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_signal_strength"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="latest_area_info"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_latest_area_info"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="service_state"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_service_state"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="roaming_state"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_roaming"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="number"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_number"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <!-- This menu item is only for CDMA phone -->
++    <Preference android:key="min_number"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_min_number"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <!-- This menu item is only for CDMA phone -->
++    <Preference android:key="prl_version"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_prl_version"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <!-- This menu item is only for CDMA phone -->
++<!-- msim-todo       android:title="@string/status_esn_number" -->
++    <Preference android:key="esn_number"
++        style="?android:attr/preferenceInformationStyle"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <!-- This menu item is only for CDMA phone -->
++    <Preference android:key="meid_number"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_meid_number"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="imei"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_imei"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="imei_sv"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_imei_sv"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++    <Preference android:key="icc_id"
++        style="?android:attr/preferenceInformationStyle"
++        android:title="@string/status_icc_id"
++        android:summary="@string/device_info_not_available"
++        android:persistent="false" />
++ </PreferenceScreen>
+diff --git a/res/xml/multi_sim_settings.xml b/res/xml/multi_sim_settings.xml
+new file mode 100644
+index 0000000..2d7607d
+--- /dev/null
++++ b/res/xml/multi_sim_settings.xml
+@@ -0,0 +1,73 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
++
++     Redistribution and use in source and binary forms, with or without
++     modification, are permitted provided that the following conditions are
++     met:
++         * Redistributions of source code must retain the above copyright
++           notice, this list of conditions and the following disclaimer.
++         * Redistributions in binary form must reproduce the above
++           copyright notice, this list of conditions and the following
++           disclaimer in the documentation and/or other materials provided
++           with the distribution.
++         * Neither the name of The Linux Foundation nor the names of its
++           contributors may be used to endorse or promote products derived
++           from this software without specific prior written permission.
++
++     THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
++     WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
++     ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
++     BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++     CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++     SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++     WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
++     OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++
++     IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++-->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
++
++    <PreferenceCategory android:key="multi_sim_settings">
++
++        <ListPreference
++            android:key="voice"
++            android:title="@string/voice_title"
++            android:persistent="false" />
++
++        <ListPreference
++            android:key="data"
++            android:title="@string/data_title"
++            android:persistent="false" />
++
++        <ListPreference
++            android:key="sms"
++            android:title="@string/sms_title"
++            android:persistent="false" />
++
++        <PreferenceScreen
++            android:key="config_sub"
++            android:title="@string/sel_sub_title"
++            android:summary="@string/sel_sub_summary"
++            android:persistent="false">
++            <intent android:action="android.intent.action.MAIN"
++                    android:targetPackage="com.android.phone"
++                    android:targetClass="com.android.phone.SetSubscription" />
++        </PreferenceScreen>
++
++        <CheckBoxPreference
++            android:key="tune_away"
++            android:title="@string/tune_away_title"
++            android:persistent="false" />
++
++        <ListPreference
++            android:key="priority_subscription"
++            android:title="@string/priority_sub_title"
++            android:persistent="false" />
++
++    </PreferenceCategory>
++
++</PreferenceScreen>
+diff --git a/res/xml/security_settings_misc.xml b/res/xml/security_settings_misc.xml
+index dbbeb1d..c35fad6 100644
+--- a/res/xml/security_settings_misc.xml
++++ b/res/xml/security_settings_misc.xml
+@@ -20,7 +20,8 @@
+             android:title="@string/sim_lock_settings_title"
+             android:persistent="false">
+ 
+-        <Preference android:title="@string/sim_lock_settings_category"
++        <Preference android:key="sim_lock_settings"
++                android:title="@string/sim_lock_settings_category"
+                 android:persistent="false">
+             <intent android:action="android.intent.action.MAIN"
+                      android:targetPackage="com.android.settings"
+diff --git a/res/xml/settings_headers.xml b/res/xml/settings_headers.xml
+index fbc2b7b..3aee4d9 100644
+--- a/res/xml/settings_headers.xml
++++ b/res/xml/settings_headers.xml
+@@ -58,6 +58,17 @@
+         android:fragment="com.android.settings.WirelessSettings"
+         android:icon="@drawable/empty_icon" />
+ 
++    <!-- Multi Sim Settings - this is in the settings process -->
++    <header
++        android:id="@+id/multi_sim_settings"
++        android:icon="@drawable/ic_settings_sim"
++        android:title="@string/multi_sim_settings_title">
++        <intent
++            android:action="android.intent.action.MAIN"
++            android:targetPackage="com.android.settings"
++            android:targetClass="com.android.settings.MultiSimSettings" />
++    </header>
++
+     <!-- INTERFACE -->
+     <header android:id="@+id/interface_section"
+         android:title="@string/header_category_interface" />
+diff --git a/src/com/android/settings/ApnEditor.java b/src/com/android/settings/ApnEditor.java
+index 5604bb0..9a5eb07 100644
+--- a/src/com/android/settings/ApnEditor.java
++++ b/src/com/android/settings/ApnEditor.java
+@@ -36,11 +36,14 @@ import android.preference.EditTextPreference;
+ import android.preference.ListPreference;
+ import android.preference.Preference;
+ import android.provider.Telephony;
++import android.telephony.MSimTelephonyManager;
+ import android.telephony.TelephonyManager;
+ import android.util.Log;
+ import android.view.Menu;
+ import android.view.MenuInflater;
+ import android.view.MenuItem;
++import android.provider.Settings;
++import android.provider.Settings.SettingNotFoundException;
+ 
+ import com.android.internal.telephony.Phone;
+ import com.android.internal.telephony.PhoneConstants;
+@@ -93,6 +96,7 @@ public class ApnEditor extends SettingsPreferenceFragment
+ 
+     private String mCurMnc;
+     private String mCurMcc;
++    private int mSubscription = 0;
+ 
+     private Uri mUri;
+     private Cursor mCursor;
+@@ -204,6 +208,10 @@ public class ApnEditor extends SettingsPreferenceFragment
+             mUri = intent.getData();
+         }
+ 
++        // Read the subscription received from Phone settings.
++        mSubscription = intent.getIntExtra(SelectSubscription.SUBSCRIPTION_KEY,
++                MSimTelephonyManager.getDefault().getDefaultSubscription());
++        Log.d(TAG,"ApnEditor onCreate received sub: " + mSubscription);
+         mFirstTime = icicle == null;
+ 
+         if (action.equals(Intent.ACTION_INSERT)) {
+@@ -239,7 +247,7 @@ public class ApnEditor extends SettingsPreferenceFragment
+ 
+         mTelephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+ 
+-        fillUi();
++        fillUi(intent.getStringExtra(ApnSettings.OPERATOR_NUMERIC_EXTRA));
+         setHasOptionsMenu(true);
+     }
+ 
+@@ -257,7 +265,7 @@ public class ApnEditor extends SettingsPreferenceFragment
+         super.onPause();
+     }
+ 
+-    private void fillUi() {
++    private void fillUi(String defaultOperatorNumeric) {
+         if (mFirstTime) {
+             mFirstTime = false;
+             // Fill in all the values from the db in both text editor and summary
+@@ -275,14 +283,12 @@ public class ApnEditor extends SettingsPreferenceFragment
+             mMnc.setText(mCursor.getString(MNC_INDEX));
+             mApnType.setText(mCursor.getString(TYPE_INDEX));
+             if (mNewApn) {
+-                String numeric =
+-                    SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC);
+                 // MCC is first 3 chars and then in 2 - 3 chars of MNC
+-                if (numeric != null && numeric.length() > 4) {
++                if (defaultOperatorNumeric != null && defaultOperatorNumeric.length() > 4) {
+                     // Country code
+-                    String mcc = numeric.substring(0, 3);
++                    String mcc = defaultOperatorNumeric.substring(0, 3);
+                     // Network code
+-                    String mnc = numeric.substring(3);
++                    String mnc = defaultOperatorNumeric.substring(3);
+                     // Auto populate MNC and MCC for new entries, based on what SIM reports
+                     mMcc.setText(mcc);
+                     mMnc.setText(mnc);
+@@ -507,6 +513,7 @@ public class ApnEditor extends SettingsPreferenceFragment
+         String apn = checkNotSet(mApn.getText());
+         String mcc = checkNotSet(mMcc.getText());
+         String mnc = checkNotSet(mMnc.getText());
++        int dataSub = 0;
+ 
+         if (getErrorMsg() != null && !force) {
+             showDialog(ERROR_DIALOG_ID);
+@@ -556,8 +563,19 @@ public class ApnEditor extends SettingsPreferenceFragment
+ 
+         values.put(Telephony.Carriers.NUMERIC, mcc + mnc);
+ 
++        try {
++            dataSub = Settings.Global.getInt(getContentResolver(),
++                    Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION);
++        } catch (SettingNotFoundException snfe) {
++            // Exception Reading Multi Sim Data Subscription Value
++            if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
++               Log.e(TAG, "Exception Reading Multi Sim Data Subscription Value.", snfe);
++            }
++        }
++
+         if (mCurMnc != null && mCurMcc != null) {
+-            if (mCurMnc.equals(mnc) && mCurMcc.equals(mcc)) {
++            if (mCurMnc.equals(mnc) && mCurMcc.equals(mcc) &&
++                    mSubscription == dataSub ) {
+                 values.put(Telephony.Carriers.CURRENT, 1);
+             }
+         }
+diff --git a/src/com/android/settings/ApnSettings.java b/src/com/android/settings/ApnSettings.java
+index 2b71a72..5ee33bb 100644
+--- a/src/com/android/settings/ApnSettings.java
++++ b/src/com/android/settings/ApnSettings.java
+@@ -34,11 +34,14 @@ import android.os.Handler;
+ import android.os.HandlerThread;
+ import android.os.Looper;
+ import android.os.Message;
++import android.os.SystemProperties;
+ import android.preference.Preference;
+ import android.preference.PreferenceActivity;
+ import android.preference.PreferenceGroup;
+ import android.preference.PreferenceScreen;
+ import android.provider.Telephony;
++import android.text.TextUtils;
++import android.telephony.MSimTelephonyManager;
+ import android.util.Log;
+ import android.view.Menu;
+ import android.view.MenuInflater;
+@@ -59,6 +62,7 @@ public class ApnSettings extends SettingsPreferenceFragment implements
+         "content://telephony/carriers/restore";
+     public static final String PREFERRED_APN_URI =
+         "content://telephony/carriers/preferapn";
++    public static final String OPERATOR_NUMERIC_EXTRA = "operator";
+ 
+     public static final String APN_ID = "apn_id";
+ 
+@@ -77,6 +81,7 @@ public class ApnSettings extends SettingsPreferenceFragment implements
+ 
+     private static final Uri DEFAULTAPN_URI = Uri.parse(RESTORE_CARRIERS_URI);
+     private static final Uri PREFERAPN_URI = Uri.parse(PREFERRED_APN_URI);
++    private Uri mPreferApnUri;
+ 
+     private static boolean mRestoreDefaultApnMode;
+ 
+@@ -84,8 +89,12 @@ public class ApnSettings extends SettingsPreferenceFragment implements
+     private RestoreApnProcessHandler mRestoreApnProcessHandler;
+     private HandlerThread mRestoreDefaultApnThread;
+ 
++    private int mSubscription = 0;
+     private String mSelectedKey;
+ 
++    private boolean mUseNvOperatorForEhrpd = SystemProperties.getBoolean(
++            "persist.radio.use_nv_for_ehrpd", false);
++
+     private IntentFilter mMobileStateFilter;
+ 
+     private final BroadcastReceiver mMobileStateReceiver = new BroadcastReceiver() {
+@@ -120,9 +129,19 @@ public class ApnSettings extends SettingsPreferenceFragment implements
+     public void onCreate(Bundle icicle) {
+         super.onCreate(icicle);
+         addPreferencesFromResource(R.xml.apn_settings);
+-
++        mSubscription = getActivity().getIntent().getIntExtra(SelectSubscription.SUBSCRIPTION_KEY,
++                MSimTelephonyManager.getDefault().getDefaultSubscription());
++        Log.d(TAG, "onCreate received sub :" + mSubscription);
+         mMobileStateFilter = new IntentFilter(
+                 TelephonyIntents.ACTION_ANY_DATA_CONNECTION_STATE_CHANGED);
++
++        if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
++            mPreferApnUri = Uri.parse(PREFERRED_APN_URI + "/" + mSubscription);
++        } else {
++            mPreferApnUri = Uri.parse(PREFERRED_APN_URI);
++        }
++        Log.d(TAG, "Preferred APN Uri is set to '" + mPreferApnUri.toString() + "'");
++
+         setHasOptionsMenu(true);
+     }
+ 
+@@ -155,9 +174,12 @@ public class ApnSettings extends SettingsPreferenceFragment implements
+     }
+ 
+     private void fillList() {
+-        String where = "numeric=\""
+-            + android.os.SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "")
+-            + "\"";
++        String where = getOperatorNumericSelection();
++
++        if (TextUtils.isEmpty(where)) {
++            Log.d(TAG, "getOperatorNumericSelection is empty ");
++            return;
++        }
+ 
+         Cursor cursor = getContentResolver().query(Telephony.Carriers.CONTENT_URI, new String[] {
+                 "_id", "name", "apn", "type"}, where, null,
+@@ -235,6 +257,7 @@ public class ApnSettings extends SettingsPreferenceFragment implements
+         Bundle editBundle = new Bundle();
+         editBundle.putString(ApnEditor.EDIT_ACTION, Intent.ACTION_INSERT);
+         editBundle.putString(ApnEditor.EDIT_DATA, Telephony.Carriers.CONTENT_URI.toSafeString());
++        editBundle.putString(OPERATOR_NUMERIC_EXTRA, getOperatorNumeric()[0]);
+         ((PreferenceActivity) getActivity()).startPreferencePanel(ApnEditor.class.getName(), editBundle,
+                             R.string.apn_edit, null, null, 0);
+     }
+@@ -268,13 +291,13 @@ public class ApnSettings extends SettingsPreferenceFragment implements
+ 
+         ContentValues values = new ContentValues();
+         values.put(APN_ID, mSelectedKey);
+-        resolver.update(PREFERAPN_URI, values, null, null);
++        resolver.update(mPreferApnUri, values, null, null);
+     }
+ 
+     private String getSelectedApnKey() {
+         String key = null;
+ 
+-        Cursor cursor = getContentResolver().query(PREFERAPN_URI, new String[] {"_id"},
++        Cursor cursor = getContentResolver().query(mPreferApnUri, new String[] {"_id"},
+                 null, null, Telephony.Carriers.DEFAULT_SORT_ORDER);
+         if (cursor.getCount() > 0) {
+             cursor.moveToFirst();
+@@ -365,4 +388,28 @@ public class ApnSettings extends SettingsPreferenceFragment implements
+         return null;
+     }
+ 
++    private String getOperatorNumericSelection() {
++        String[] mccmncs = getOperatorNumeric();
++        String where;
++        where = (mccmncs[0] != null) ? "numeric=\"" + mccmncs[0] + "\"" : "";
++        where += (mccmncs[1] != null) ? " or numeric=\"" + mccmncs[1] + "\"" : "";
++        Log.d(TAG, "getOperatorNumericSelection: " + where);
++        return where;
++    }
++
++    private String[] getOperatorNumeric() {
++        ArrayList<String> result = new ArrayList<String>();
++        if (mUseNvOperatorForEhrpd) {
++            String mccMncForEhrpd = SystemProperties.get("ro.cdma.home.operator.numeric", null);
++            if (mccMncForEhrpd != null && mccMncForEhrpd.length() > 0) {
++                result.add(mccMncForEhrpd);
++            }
++        }
++        String mccMncFromSim = MSimTelephonyManager.getTelephonyProperty(
++                TelephonyProperties.PROPERTY_APN_SIM_OPERATOR_NUMERIC, mSubscription, null);
++        if (mccMncFromSim != null && mccMncFromSim.length() > 0) {
++            result.add(mccMncFromSim);
++        }
++        return result.toArray(new String[2]);
++    }
+ }
+diff --git a/src/com/android/settings/CreateShortcut.java b/src/com/android/settings/CreateShortcut.java
+index f71df1d..d4843c8 100644
+--- a/src/com/android/settings/CreateShortcut.java
++++ b/src/com/android/settings/CreateShortcut.java
+@@ -20,6 +20,8 @@ import android.app.LauncherActivity;
+ import android.content.Intent;
+ import android.content.pm.ResolveInfo;
+ import android.os.Bundle;
++import android.os.SystemProperties;
++import android.telephony.MSimTelephonyManager;
+ import android.view.View;
+ import android.widget.ListView;
+ 
+@@ -32,7 +34,11 @@ public class CreateShortcut extends LauncherActivity {
+     @Override
+     protected Intent getTargetIntent() {
+         Intent targetIntent = new Intent(Intent.ACTION_MAIN, null);
+-        targetIntent.addCategory("com.android.settings.SHORTCUT");
++        if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
++            targetIntent.addCategory("codeaurora.intent.filter.settings.multisim.SHORTCUT");
++        } else {
++            targetIntent.addCategory("com.android.settings.SHORTCUT");
++        }
+         targetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+         return targetIntent;
+     }
+diff --git a/src/com/android/settings/DataUsageSummary.java b/src/com/android/settings/DataUsageSummary.java
+index 2791ca6..af99dc2 100644
+--- a/src/com/android/settings/DataUsageSummary.java
++++ b/src/com/android/settings/DataUsageSummary.java
+@@ -1,4 +1,6 @@
+ /*
++ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
++ * Not a Contribution.
+  * Copyright (C) 2011 The Android Open Source Project
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+@@ -89,6 +91,7 @@ import android.os.UserHandle;
+ import android.preference.Preference;
+ import android.preference.PreferenceActivity;
+ import android.provider.Settings;
++import android.telephony.MSimTelephonyManager;
+ import android.telephony.TelephonyManager;
+ import android.text.TextUtils;
+ import android.text.format.DateUtils;
+@@ -127,6 +130,7 @@ import android.widget.TabHost.TabSpec;
+ import android.widget.TabWidget;
+ import android.widget.TextView;
+ 
++import com.android.internal.telephony.MSimConstants;
+ import com.android.internal.telephony.PhoneConstants;
+ import com.android.settings.drawable.InsetBoundsDrawable;
+ import com.android.settings.net.ChartData;
+@@ -168,6 +172,8 @@ public class DataUsageSummary extends Fragment {
+     private static final String TAB_MOBILE = "mobile";
+     private static final String TAB_WIFI = "wifi";
+     private static final String TAB_ETHERNET = "ethernet";
++    // In multi-sim device, UI will show tab names as SIM1, SIM2, etc.
++    private static final String TAB_SIM = "SIM";
+ 
+     private static final String TAG_CONFIRM_DATA_DISABLE = "confirmDataDisable";
+     private static final String TAG_CONFIRM_DATA_ROAMING = "confirmDataRoaming";
+@@ -460,8 +466,12 @@ public class DataUsageSummary extends Fragment {
+         final boolean isOwner = ActivityManager.getCurrentUser() == UserHandle.USER_OWNER;
+ 
+         mMenuDataRoaming = menu.findItem(R.id.data_usage_menu_roaming);
+-        mMenuDataRoaming.setVisible(hasReadyMobileRadio(context) && !appDetailMode);
+-        mMenuDataRoaming.setChecked(getDataRoaming());
++        if (TAB_MOBILE.equals(mCurrentTab) || mCurrentTab.startsWith(TAB_SIM)) {
++            mMenuDataRoaming.setVisible(hasReadyMobileRadio(context) && !appDetailMode);
++            mMenuDataRoaming.setChecked(getDataRoaming());
++        } else {
++            mMenuDataRoaming.setVisible(false);
++        }
+ 
+         mMenuRestrictBackground = menu.findItem(R.id.data_usage_menu_restrict_background);
+         mMenuRestrictBackground.setVisible(
+@@ -629,7 +639,15 @@ public class DataUsageSummary extends Fragment {
+             mTabHost.addTab(buildTabSpec(TAB_3G, R.string.data_usage_tab_3g));
+             mTabHost.addTab(buildTabSpec(TAB_4G, R.string.data_usage_tab_4g));
+         } else if (hasReadyMobileRadio(context)) {
+-            mTabHost.addTab(buildTabSpec(TAB_MOBILE, R.string.data_usage_tab_mobile));
++            int phoneCount = MSimTelephonyManager.getDefault().getPhoneCount();
++            if (phoneCount > 1) {
++                for (int i = 0; i < phoneCount; i++) {
++                    mTabHost.addTab(buildTabSpec(getSubTag(i+1), getSubTitle(i+1)));
++                }
++            } else {
++                mTabHost.addTab(buildTabSpec(TAB_MOBILE,
++                        R.string.data_usage_tab_mobile));
++            }
+         }
+         if (mShowWifi && hasWifiRadio(context)) {
+             mTabHost.addTab(buildTabSpec(TAB_WIFI, R.string.data_usage_tab_wifi));
+@@ -675,6 +693,11 @@ public class DataUsageSummary extends Fragment {
+                 mEmptyTabContent);
+     }
+ 
++    private TabSpec buildTabSpec(String tag, String title) {
++        return mTabHost.newTabSpec(tag).setIndicator(title)
++                .setContent(mEmptyTabContent);
++    }
++
+     private OnTabChangeListener mTabListener = new OnTabChangeListener() {
+         @Override
+         public void onTabChanged(String tabId) {
+@@ -719,6 +742,17 @@ public class DataUsageSummary extends Fragment {
+             setPreferenceTitle(mDisableAtLimitView, R.string.data_usage_disable_mobile_limit);
+             mTemplate = buildTemplateMobileAll(getActiveSubscriberId(context));
+ 
++        } else if (currentTab.startsWith(TAB_SIM)) {
++            for (int i = 0; i < MSimTelephonyManager.getDefault()
++                    .getPhoneCount(); i++) {
++                if (currentTab.equals(getSubTag(i+1))) {
++                    setPreferenceTitle(mDataEnabledView,
++                            R.string.data_usage_enable_mobile);
++                    setPreferenceTitle(mDisableAtLimitView,
++                            R.string.data_usage_disable_mobile_limit);
++                    mTemplate = buildTemplateMobileAll(getActiveSubscriberId(i));
++                }
++            }
+         } else if (TAB_3G.equals(currentTab)) {
+             setPreferenceTitle(mDataEnabledView, R.string.data_usage_enable_3g);
+             setPreferenceTitle(mDisableAtLimitView, R.string.data_usage_disable_3g_limit);
+@@ -860,6 +894,12 @@ public class DataUsageSummary extends Fragment {
+     private Boolean mMobileDataEnabled;
+ 
+     private boolean isMobileDataEnabled() {
++        if (mCurrentTab.startsWith(TAB_SIM)) {
++            // as per SUB, return the individual flag
++            return Settings.Global.getInt(getActivity().getContentResolver(),
++                    Settings.Global.MOBILE_DATA + multiSimGetCurrentSub(), 0) != 0;
++        }
++
+         if (mMobileDataEnabled != null) {
+             // TODO: deprecate and remove this once enabled flag is on policy
+             return mMobileDataEnabled;
+@@ -870,8 +910,21 @@ public class DataUsageSummary extends Fragment {
+ 
+     private void setMobileDataEnabled(boolean enabled) {
+         if (LOGD) Log.d(TAG, "setMobileDataEnabled()");
+-        mConnService.setMobileDataEnabled(enabled);
+-        mMobileDataEnabled = enabled;
++        if (mCurrentTab.startsWith(TAB_SIM)) {
++            int sub = multiSimGetCurrentSub();
++
++            // as per SUB, set the individual flag
++            Settings.Global.putInt(getActivity().getContentResolver(),
++                    Settings.Global.MOBILE_DATA + sub, enabled ? 1 : 0);
++
++            // If current DDS is this SUB, update the Global flag also.
++            if(sub == MSimTelephonyManager.getDefault().getPreferredDataSubscription()) {
++                mConnService.setMobileDataEnabled(enabled);
++            }
++        } else {
++            mConnService.setMobileDataEnabled(enabled);
++            mMobileDataEnabled = enabled;
++        }
+         updatePolicy(false);
+     }
+ 
+@@ -891,6 +944,13 @@ public class DataUsageSummary extends Fragment {
+ 
+     private boolean getDataRoaming() {
+         final ContentResolver resolver = getActivity().getContentResolver();
++
++        if (mCurrentTab.startsWith(TAB_SIM)) {
++            // as per SUB, return the individual flag
++            return Settings.Global.getInt(resolver,
++                    Settings.Global.DATA_ROAMING + multiSimGetCurrentSub(), 0) != 0;
++        }
++
+         return Settings.Global.getInt(resolver, Settings.Global.DATA_ROAMING, 0) != 0;
+     }
+ 
+@@ -898,7 +958,21 @@ public class DataUsageSummary extends Fragment {
+         // TODO: teach telephony DataConnectionTracker to watch and apply
+         // updates when changed.
+         final ContentResolver resolver = getActivity().getContentResolver();
+-        Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING, enabled ? 1 : 0);
++
++        if (mCurrentTab.startsWith(TAB_SIM)) {
++            int sub = multiSimGetCurrentSub();
++
++            // as per SUB, set the individual flag
++            Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING + sub, enabled ? 1 : 0);
++
++            // If current DDS is this SUB, update the Global flag also.
++            if(sub == MSimTelephonyManager.getDefault().getPreferredDataSubscription()) {
++                Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING, enabled ? 1 : 0);
++            }
++        } else {
++            Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING, enabled ? 1 : 0);
++        }
++
+         mMenuDataRoaming.setChecked(enabled);
+     }
+ 
+@@ -933,7 +1007,7 @@ public class DataUsageSummary extends Fragment {
+         }
+ 
+         // TODO: move enabled state directly into policy
+-        if (TAB_MOBILE.equals(mCurrentTab)) {
++        if (TAB_MOBILE.equals(mCurrentTab) || mCurrentTab.startsWith(TAB_SIM)) {
+             mBinding = true;
+             mDataEnabled.setChecked(isMobileDataEnabled());
+             mBinding = false;
+@@ -1039,7 +1113,7 @@ public class DataUsageSummary extends Fragment {
+ 
+             final boolean dataEnabled = isChecked;
+             final String currentTab = mCurrentTab;
+-            if (TAB_MOBILE.equals(currentTab)) {
++            if (TAB_MOBILE.equals(currentTab) || currentTab.startsWith(TAB_SIM)) {
+                 if (dataEnabled) {
+                     setMobileDataEnabled(true);
+                 } else {
+@@ -1193,8 +1267,8 @@ public class DataUsageSummary extends Fragment {
+         final String rangePhrase = formatDateRange(context, start, end);
+ 
+         final int summaryRes;
+-        if (TAB_MOBILE.equals(mCurrentTab) || TAB_3G.equals(mCurrentTab)
+-                || TAB_4G.equals(mCurrentTab)) {
++        if (TAB_MOBILE.equals(mCurrentTab) || TAB_3G.equals(mCurrentApp)
++                || TAB_4G.equals(mCurrentApp) || mCurrentTab.startsWith(TAB_SIM)) {
+             summaryRes = R.string.data_usage_total_during_range_mobile;
+         } else {
+             summaryRes = R.string.data_usage_total_during_range;
+@@ -1290,6 +1364,10 @@ public class DataUsageSummary extends Fragment {
+         return SystemProperties.get(TEST_SUBSCRIBER_PROP, actualSubscriberId);
+     }
+ 
++    private static String getActiveSubscriberId(int sub) {
++        return MSimTelephonyManager.getDefault().getSubscriberId(sub);
++    }
++
+     private DataUsageChartListener mChartListener = new DataUsageChartListener() {
+         @Override
+         public void onInspectRangeChanged() {
+@@ -1671,6 +1749,10 @@ public class DataUsageSummary extends Fragment {
+             } else if (TAB_MOBILE.equals(currentTab)) {
+                 message = res.getString(R.string.data_usage_limit_dialog_mobile);
+                 limitBytes = Math.max(5 * GB_IN_BYTES, minLimitBytes);
++            } else if (currentTab.startsWith(TAB_SIM)) {
++                message = res.getString(R.string.data_usage_limit_dialog_mobile);
++                limitBytes = Math.max(5 * GB_IN_BYTES, minLimitBytes);
++
+             } else {
+                 throw new IllegalArgumentException("unknown current tab: " + currentTab);
+             }
+@@ -2393,4 +2475,37 @@ public class DataUsageSummary extends Fragment {
+         summary.setVisibility(View.VISIBLE);
+         summary.setText(string);
+     }
++
++    // Utility function for support Mobile data and Data Roaming per sub support.
++    // get tab name for a special sub when there are more than one sub.
++    private String getSubTag(int i) {
++        if (i <= 0) {
++            return "";
++        } else {
++            return TAB_SIM + i;
++        }
++    }
++
++    // get title of a special sub when there are more than one sub.
++    private String getSubTitle(int i) {
++        if (i <= 0) {
++            return "";
++        } else {
++            return getText(R.string.data_usage_tab_slot).toString() + i;
++        }
++    }
++
++    // Get current sub from the tab name.
++    private int multiSimGetCurrentSub() {
++        // Findout the current sub
++        for (int i = 0; i < MSimTelephonyManager.getDefault()
++                    .getPhoneCount(); i++) {
++            if (mCurrentTab.equals(getSubTag(i+1))) {
++                return i;
++            }
++        }
++
++        // only as a default support, should not be hit.
++        return 0;
++    }
+ }
+diff --git a/src/com/android/settings/DeviceInfoSettings.java b/src/com/android/settings/DeviceInfoSettings.java
+index 90be731..7e9da61 100644
+--- a/src/com/android/settings/DeviceInfoSettings.java
++++ b/src/com/android/settings/DeviceInfoSettings.java
+@@ -29,6 +29,7 @@ import android.os.UserHandle;
+ import android.preference.Preference;
+ import android.preference.PreferenceGroup;
+ import android.preference.PreferenceScreen;
++import android.telephony.MSimTelephonyManager;
+ import android.util.Log;
+ import android.widget.Toast;
+ 
+@@ -71,6 +72,7 @@ public class DeviceInfoSettings extends RestrictedSettingsFragment {
+     private static final String KEY_DEVICE_CPU = "device_cpu";
+     private static final String KEY_DEVICE_MEMORY = "device_memory";
+     private static final String KEY_CM_UPDATES = "cm_updates";
++    private static final String KEY_STATUS = "status_info";
+ 
+     static final int TAPS_TO_BE_A_DEVELOPER = 7;
+     long[] mHits = new long[3];
+@@ -112,6 +114,11 @@ public class DeviceInfoSettings extends RestrictedSettingsFragment {
+             setStringSummary(KEY_SELINUX_STATUS, status);
+         }
+ 
++        if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
++            findPreference(KEY_STATUS).getIntent().setClassName(
++                    "com.android.settings","com.android.settings.deviceinfo.MSimStatus");
++        }
++
+         // Remove selinux information if property is not present
+         removePreferenceIfPropertyMissing(getPreferenceScreen(), KEY_SELINUX_STATUS,
+                 PROPERTY_SELINUX_STATUS);
+@@ -147,7 +154,8 @@ public class DeviceInfoSettings extends RestrictedSettingsFragment {
+                 PROPERTY_EQUIPMENT_ID);
+ 
+         // Remove Baseband version if wifi-only device
+-        if (Utils.isWifiOnly(getActivity())) {
++        if (Utils.isWifiOnly(getActivity())
++                || (MSimTelephonyManager.getDefault().isMultiSimEnabled())) {
+             getPreferenceScreen().removePreference(findPreference(KEY_BASEBAND_VERSION));
+         }
+ 
+diff --git a/src/com/android/settings/IccLockSettings.java b/src/com/android/settings/IccLockSettings.java
+index b988572..da502ee 100644
+--- a/src/com/android/settings/IccLockSettings.java
++++ b/src/com/android/settings/IccLockSettings.java
+@@ -29,12 +29,14 @@ import android.preference.CheckBoxPreference;
+ import android.preference.Preference;
+ import android.preference.PreferenceActivity;
+ import android.preference.PreferenceScreen;
++import android.telephony.TelephonyManager;
+ import android.util.Log;
+ import android.widget.Toast;
+ 
+ import com.android.internal.telephony.Phone;
+ import com.android.internal.telephony.PhoneFactory;
+ import com.android.internal.telephony.TelephonyIntents;
++import com.codeaurora.telephony.msim.MSimPhoneFactory;
+ 
+ /**
+  * Implements the preference screen to enable/disable ICC lock and
+@@ -122,7 +124,15 @@ public class IccLockSettings extends PreferenceActivity
+         public void onReceive(Context context, Intent intent) {
+             final String action = intent.getAction();
+             if (TelephonyIntents.ACTION_SIM_STATE_CHANGED.equals(action)) {
+-                mHandler.sendMessage(mHandler.obtainMessage(MSG_SIM_STATE_CHANGED));
++                if (mPhone.getIccCard().getState().isPinLocked()) {
++                    //Code control lands up here only if user pressed cancel for PIN unlock.
++                    //So disable the pin toggle option as card is in LOCKED state.
++                    mPinToggle.setChecked(true);
++                    mPinToggle.setEnabled(false);
++                } else {
++                    mPinToggle.setEnabled(true);
++                    mHandler.sendMessage(mHandler.obtainMessage(MSG_SIM_STATE_CHANGED));
++                }
+             }
+         }
+     };
+@@ -182,7 +192,11 @@ public class IccLockSettings extends PreferenceActivity
+         // Don't need any changes to be remembered
+         getPreferenceScreen().setPersistent(false);
+ 
+-        mPhone = PhoneFactory.getDefaultPhone();
++        Intent intent = getIntent();
++        int subscription = intent.getIntExtra(SelectSubscription.SUBSCRIPTION_KEY,
++                MSimPhoneFactory.getDefaultSubscription());
++        // Use the right phone based on the subscription selected.
++        mPhone = MSimPhoneFactory.getPhone(subscription);
+         mRes = getResources();
+         updatePreferences();
+     }
+diff --git a/src/com/android/settings/MultiSimSettings.java b/src/com/android/settings/MultiSimSettings.java
+new file mode 100644
+index 0000000..91c92bd
+--- /dev/null
++++ b/src/com/android/settings/MultiSimSettings.java
+@@ -0,0 +1,677 @@
++/* Copyright (c) 2011-13, The Linux Foundation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are
++ * met:
++ *     * Redistributions of source code must retain the above copyright
++ *       notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above
++ *       copyright notice, this list of conditions and the following
++ *       disclaimer in the documentation and/or other materials provided
++ *       with the distribution.
++ *     * Neither the name of The Linux Foundation nor the names of its
++ *       contributors may be used to endorse or promote products derived
++ *       from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
++ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++package com.android.settings;
++
++
++import android.app.AlertDialog;
++import android.app.Dialog;
++import android.app.ProgressDialog;
++import android.content.BroadcastReceiver;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.os.Bundle;
++import android.os.Message;
++import android.os.Handler;
++import android.os.AsyncResult;
++import android.preference.CheckBoxPreference;
++import android.preference.ListPreference;
++import android.preference.Preference;
++import android.preference.PreferenceActivity;
++import android.preference.PreferenceScreen;
++import android.provider.Settings;
++import android.provider.Settings.SettingNotFoundException;
++import android.telephony.MSimTelephonyManager;
++import android.util.Log;
++import android.widget.Toast;
++
++import com.android.internal.telephony.MSimConstants;
++import com.android.internal.telephony.Phone;
++import com.android.settings.R;
++import com.codeaurora.telephony.msim.CardSubscriptionManager;
++import com.codeaurora.telephony.msim.MSimPhoneFactory;
++import com.codeaurora.telephony.msim.SubscriptionManager;
++import com.codeaurora.telephony.msim.Subscription.SubscriptionStatus;
++
++import java.lang.Object;
++
++public class MultiSimSettings extends PreferenceActivity implements DialogInterface.
++        OnDismissListener, DialogInterface.OnClickListener, Preference.OnPreferenceChangeListener  {
++    private static final String TAG = "MultiSimSettings";
++
++    private static final String KEY_VOICE = "voice";
++    private static final String KEY_DATA = "data";
++    private static final String KEY_SMS = "sms";
++    private static final String KEY_CONFIG_SUB = "config_sub";
++
++    private static final String CONFIG_SUB = "CONFIG_SUB";
++    private static final String TUNE_AWAY = "tune_away";
++    private static final String PRIORITY_SUB = "priority_subscription";
++
++    private static final int DIALOG_SET_DATA_SUBSCRIPTION_IN_PROGRESS = 100;
++
++    static final int EVENT_SET_DATA_SUBSCRIPTION_DONE = 1;
++    static final int EVENT_SUBSCRIPTION_ACTIVATED = 2;
++    static final int EVENT_SUBSCRIPTION_DEACTIVATED = 3;
++    static final int EVENT_SET_VOICE_SUBSCRIPTION = 4;
++    static final int EVENT_SET_SMS_SUBSCRIPTION = 5;
++    static final int EVENT_SET_TUNE_AWAY = 6;
++    static final int EVENT_SET_TUNE_AWAY_DONE = 7;
++    static final int EVENT_SET_PRIORITY_SUBSCRIPTION = 8;
++    static final int EVENT_SET_PRIORITY_SUBSCRIPTION_DONE = 9;
++    static final int EVENT_SET_VOICE_SUBSCRIPTION_DONE = 10;
++
++    protected boolean mIsForeground = false;
++    static final int SUBSCRIPTION_ID_INVALID = -1;
++    static final int SUBSCRIPTION_DUAL_STANDBY = 2;
++    private final int MAX_SUBSCRIPTIONS = SubscriptionManager.NUM_SUBSCRIPTIONS;
++
++    private ListPreference mVoice;
++    private ListPreference mData;
++    private ListPreference mSms;
++    private PreferenceScreen mConfigSub;
++    private CharSequence[] entries; // Used for entries like Subscription1, Subscription2 ...
++    private CharSequence[] entryValues; // Used for entryValues like 0, 1 ,2 ...
++    private CharSequence[] summaries; // Used for Summaries like Aubscription1, Subscription2....
++    private CharSequence[] entriesPrompt; // Used in case of prompt option is required.
++    private CharSequence[] entryValuesPrompt; // Used in case of prompt option is required.
++    private CharSequence[] summariesPrompt; // Used in case of prompt option is required.
++
++    /* tune away initial/old state */
++    private boolean mTuneAwayValue = false;
++    /* Priority subscription initial/old state */
++    private int mPrioritySubValue = 0;
++    /* Default voice subscription initial/old state */
++    private int mVoiceSub = 0;
++    private Phone mPhone = null;
++
++    private CheckBoxPreference mTuneAway;
++    private ListPreference mPrioritySub;
++
++    private AirplaneModeBroadcastReceiver mReceiver = null;
++    IntentFilter mIntentFilter =
++            new IntentFilter(Intent.ACTION_AIRPLANE_MODE_CHANGED);
++    SubscriptionManager mSubManager = SubscriptionManager.getInstance();
++    private int mIccCardCount = 0;
++    private CardSubscriptionManager mCardSubscriptionManager =
++            CardSubscriptionManager.getInstance();
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++
++        addPreferencesFromResource(R.xml.multi_sim_settings);
++
++        mVoice = (ListPreference) findPreference(KEY_VOICE);
++        mVoice.setOnPreferenceChangeListener(this);
++        mData = (ListPreference) findPreference(KEY_DATA);
++        mData.setOnPreferenceChangeListener(this);
++        mSms = (ListPreference) findPreference(KEY_SMS);
++        mSms.setOnPreferenceChangeListener(this);
++        mConfigSub = (PreferenceScreen) findPreference(KEY_CONFIG_SUB);
++        mConfigSub.getIntent().putExtra(CONFIG_SUB, true);
++        mTuneAway = (CheckBoxPreference) findPreference(TUNE_AWAY);
++        mTuneAway.setOnPreferenceChangeListener(this);
++        mPrioritySub = (ListPreference) findPreference(PRIORITY_SUB);
++        mPrioritySub.setOnPreferenceChangeListener(this);
++        mPhone = MSimPhoneFactory.getPhone(MSimConstants.SUB1);
++
++        for (int subId = 0; subId < SubscriptionManager.NUM_SUBSCRIPTIONS; subId++) {
++            mSubManager.registerForSubscriptionActivated(subId,
++                    mHandler, EVENT_SUBSCRIPTION_ACTIVATED, null);
++            mSubManager.registerForSubscriptionDeactivated(subId,
++                    mHandler, EVENT_SUBSCRIPTION_DEACTIVATED, null);
++        }
++
++        // Create and Intialize the strings required for MultiSIM
++        // Dynamic creation of entries instead of using static array vlues.
++        // entries are Subscription1, Subscription2, Subscription3 ....
++        // EntryValues are 0, 1 ,2 ....
++        // Summaries are Subscription1, Subscription2, Subscription3 ....
++        entries = new CharSequence[MAX_SUBSCRIPTIONS];
++        entryValues = new CharSequence[MAX_SUBSCRIPTIONS];
++        summaries = new CharSequence[MAX_SUBSCRIPTIONS];
++        entriesPrompt = new CharSequence[MAX_SUBSCRIPTIONS + 1];
++        entryValuesPrompt = new CharSequence[MAX_SUBSCRIPTIONS + 1];
++        summariesPrompt = new CharSequence[MAX_SUBSCRIPTIONS + 1];
++        CharSequence[] subString = getResources().getTextArray(R.array.multi_sim_entries);
++        int i = 0;
++        for (i = 0; i < MAX_SUBSCRIPTIONS; i++) {
++            entries[i] = subString[i];
++            summaries[i] = subString[i];
++            summariesPrompt[i] = subString[i];
++            entriesPrompt[i] = subString[i];
++            entryValues[i] = Integer.toString(i);
++            entryValuesPrompt[i] = Integer.toString(i);
++        }
++        entryValuesPrompt[i] = Integer.toString(i);
++        entriesPrompt[i] = getResources().getString(R.string.prompt);
++        summariesPrompt[i] = getResources().getString(R.string.prompt_user);
++
++        mReceiver = new AirplaneModeBroadcastReceiver();
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++        mIsForeground = true;
++        registerForAirplaneMode();
++        updateUi();
++    }
++
++    /**
++     * UI behaviour for different SIM scenarios are listed below :
++     * 1. No SIM case : Multi SIM menu will not be accessible.Dialog
++     *    will be displayed to the user
++     * 2. One SIM case : Config SUB menu will only be accessible
++     * 3. Multiple SIM case : All menu options within Multi SIM
++     *    settings will be accessible.
++     *
++     * In case of airplane mode, based on the availability of SIM
++     * cards the same UI is displayed
++     */
++    private void updateUi() {
++        boolean isCardAbsentOrError = false;
++        //reset value before using it
++        mIccCardCount = 0;
++
++        for (int i = 0; i < MAX_SUBSCRIPTIONS; i++) {
++            isCardAbsentOrError = mCardSubscriptionManager.isCardAbsentOrError(i);
++
++            /*Increment count only if card is valid*/
++            if (!isCardAbsentOrError) {
++                mIccCardCount++;
++            }
++        }
++        Log.d(TAG, "mIccCardCount = " + mIccCardCount);
++
++        if (mIccCardCount == 0) {
++             mConfigSub.setEnabled(false);
++             mConfigSub.setSelectable(false);
++             displayAlertDialog(getResources().getString(R.string.no_sim_info));
++             disableMsimMenu();
++        } else if (mIccCardCount == 1) {
++             //1 SIM card is present. Config sub must be accessible
++             disableMsimMenu();
++        } else if ( (mIccCardCount > 1) && (mIccCardCount <= MAX_SUBSCRIPTIONS) )  {
++            updateMultiSimEntriesForVoice();
++            updateMultiSimEntriesForData();
++            updateMultiSimEntriesForSms();
++            updateState();
++            updateTuneAwayState();
++            updatePrioritySubState();
++        } else {
++            Log.d(TAG, "Invalid card count");
++        }
++    }
++
++    /**
++     ** Receiver for Airplane mode changed intent broadcasts.
++     **/
++    private class AirplaneModeBroadcastReceiver extends BroadcastReceiver {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            String action = intent.getAction();
++            if (action.equals(Intent.ACTION_AIRPLANE_MODE_CHANGED)) {
++                Log.d(TAG, "Intent ACTION_AIRPLANE_MODE_CHANGED received");
++                /**
++                 * finish() is required when user enables/disables airplane mode
++                 * via power key. In that case, since the dialog is displayed,
++                 * onResume is not called and the screen will not be updated.
++                 * Also, time will be taken to power down the UICC card and
++                 * incorrect screen is displayed to the user since this intent
++                 * is received before UICC cards status is updated.
++                 * To avoid these issues, finish is called to exit the Multi
++                 * SIM Settings gracefully.
++                 */
++                finish();
++            }
++        }
++    }
++
++    protected void updateMultiSimEntriesForData() {
++        mData.setEntries(entries);
++        mData.setEntryValues(entryValues);
++    }
++
++    protected void updateMultiSimEntriesForSms() {
++        int count = mSubManager.getActiveSubscriptionsCount();
++        if (count >= SUBSCRIPTION_DUAL_STANDBY) {
++            mSms.setEntries(entriesPrompt);
++            mSms.setEntryValues(entryValuesPrompt);
++        } else  {
++            mSms.setEntries(entries);
++            mSms.setEntryValues(entryValues);
++        }
++    }
++
++    protected void updateMultiSimEntriesForVoice() {
++        int count = mSubManager.getActiveSubscriptionsCount();
++        if (count >= SUBSCRIPTION_DUAL_STANDBY) {
++            mVoice.setEntries(entriesPrompt);
++            mVoice.setEntryValues(entryValuesPrompt);
++        } else  {
++            mVoice.setEntries(entries);
++            mVoice.setEntryValues(entryValues);
++        }
++    }
++
++    private void updateTuneAwayState() {
++        boolean tuneAwayStatus = (Settings.Global.getInt(getContentResolver(),
++                Settings.Global.TUNE_AWAY_STATUS,  0) == 1);
++        int resId = tuneAwayStatus ? R.string.tune_away_enabled : R.string.tune_away_disabled;
++
++        mTuneAway.setChecked(tuneAwayStatus);
++        mTuneAway.setSummary(getResources().getString(resId));
++    }
++
++    private void updatePrioritySubState() {
++        mPrioritySub.setEntries(entries);
++        mPrioritySub.setEntryValues(entryValues);
++
++        try {
++            int priorityValue = Settings.Global.getInt(getContentResolver(),
++                    Settings.Global.MULTI_SIM_PRIORITY_SUBSCRIPTION);
++            mPrioritySub.setValue(Integer.toString(priorityValue));
++            mPrioritySub.setSummary(summaries[priorityValue]);
++            mPrioritySubValue = priorityValue;
++
++        } catch (SettingNotFoundException snfe) {
++            Log.e(TAG, "Settings Exception Reading Dual Sim Priority Subscription Values");
++        }
++    }
++
++    @Override
++    protected void onPause() {
++        super.onPause();
++        mIsForeground = false;
++        unregisterForAirplaneMode();
++    }
++
++    private void updateState() {
++        updateVoiceSummary();
++        updateDataSummary();
++        updateSmsSummary();
++    }
++
++    private void updateVoiceSummary() {
++        int voiceSub = MSimPhoneFactory.getVoiceSubscription();
++        boolean promptEnabled  = MSimPhoneFactory.isPromptEnabled();
++        int count = mSubManager.getActiveSubscriptionsCount();
++
++        Log.d(TAG, "updateVoiceSummary: voiceSub =  " + voiceSub
++                + " promptEnabled = " + promptEnabled
++                + " number of active SUBs = " + count);
++
++        if (promptEnabled && count >= SUBSCRIPTION_DUAL_STANDBY) {
++
++            Log.d(TAG, "prompt is enabled: setting value to : " + MAX_SUBSCRIPTIONS);
++            mVoice.setValue(Integer.toString(MAX_SUBSCRIPTIONS));
++            mVoice.setSummary(summariesPrompt[MAX_SUBSCRIPTIONS]);
++        } else {
++            String sub = Integer.toString(voiceSub);
++            Log.d(TAG, "setting value to : " + sub);
++            mVoice.setValue(sub);
++            mVoice.setSummary(summaries[voiceSub]);
++        }
++    }
++
++    private void updateDataSummary() {
++        int dataSub = MSimPhoneFactory.getDataSubscription();
++
++        Log.d(TAG, "updateDataSummary: Data Subscription : = " + dataSub);
++        mData.setValue(Integer.toString(dataSub));
++        mData.setSummary(summaries[dataSub]);
++    }
++
++    private void updateSmsSummary() {
++        int smsSub = MSimPhoneFactory.getSMSSubscription();
++        boolean promptEnabled  = MSimPhoneFactory.isSMSPromptEnabled();
++        int count = mSubManager.getActiveSubscriptionsCount();
++
++        Log.d(TAG, "updateSmsSummary: SmsSub =  " + smsSub
++                + " promptEnabled = " + promptEnabled
++                + " number of active SUBs = " + count);
++
++        if (promptEnabled && count >= SUBSCRIPTION_DUAL_STANDBY) {
++            Log.d(TAG, "prompt is enabled: setting value to : " + MAX_SUBSCRIPTIONS);
++            mSms.setValue(Integer.toString(MAX_SUBSCRIPTIONS));
++            mSms.setSummary(summariesPrompt[MAX_SUBSCRIPTIONS]);
++        } else {
++            String sub = Integer.toString(smsSub);
++            Log.d(TAG, "setting value to : " + sub);
++            mSms.setValue(sub);
++            mSms.setSummary(summaries[smsSub]);
++        }
++    }
++
++    public boolean onPreferenceChange(Preference preference, Object objValue) {
++        final String key = preference.getKey();
++        String status;
++        Log.d(TAG, "onPreferenceChange:::: " );
++
++        if (KEY_VOICE.equals(key)) {
++
++            mVoiceSub = Integer.parseInt((String) objValue);
++            if (mVoiceSub == MAX_SUBSCRIPTIONS) {
++                //MAX_SUBSCRIPTIONS is the maximum
++                //index of the UI options.This will be the Prompt option.
++                MSimPhoneFactory.setPromptEnabled(true);
++                mVoice.setSummary(summariesPrompt[mVoiceSub]);
++                Log.d(TAG, "prompt is enabled " + mVoiceSub);
++            } else if (mSubManager.getCurrentSubscription(mVoiceSub).subStatus
++                    == SubscriptionStatus.SUB_ACTIVATED) {
++                Log.d(TAG, "setVoiceSubscription " + mVoiceSub);
++                MSimPhoneFactory.setPromptEnabled(false);
++                mHandler.sendMessage(mHandler.obtainMessage(EVENT_SET_VOICE_SUBSCRIPTION,
++                        mVoiceSub));
++            } else {
++                status = getResources().getString(R.string.set_voice_error);
++                displayAlertDialog(status);
++                Log.w(TAG, "setVoiceSubscription: sub=" + mVoiceSub
++                        + " failed due to sub not activated");
++                return false;
++            }
++        }
++
++        if (KEY_DATA.equals(key)) {
++            int dataSub = Integer.parseInt((String) objValue);
++            Log.d(TAG, "setDataSubscription " + dataSub);
++            if (mIsForeground) {
++                showDialog(DIALOG_SET_DATA_SUBSCRIPTION_IN_PROGRESS);
++            }
++            SubscriptionManager mSubscriptionManager = SubscriptionManager.getInstance();
++            Message setDdsMsg = Message.obtain(mHandler, EVENT_SET_DATA_SUBSCRIPTION_DONE, null);
++            mSubscriptionManager.setDataSubscription(dataSub, setDdsMsg);
++        }
++
++        if (KEY_SMS.equals(key)) {
++            int smsSub = Integer.parseInt((String) objValue);
++            if (smsSub == MAX_SUBSCRIPTIONS) {
++                //MAX_SUBSCRIPTIONS is the maximum
++                //index of the UI options.This will be the Prompt option.
++                MSimPhoneFactory.setSMSPromptEnabled(true);
++                mSms.setSummary(summariesPrompt[smsSub]);
++                Log.d(TAG, "prompt is enabled " + smsSub);
++            } else if (mSubManager.getCurrentSubscription(smsSub).subStatus
++                   == SubscriptionStatus.SUB_ACTIVATED) {
++                Log.d(TAG, "setSMSSubscription " + smsSub);
++                MSimPhoneFactory.setSMSPromptEnabled(false);
++                MSimPhoneFactory.setSMSSubscription(smsSub);
++                mSms.setSummary(summaries[smsSub]);
++            } else {
++                status = getResources().getString(R.string.set_sms_error);
++                displayAlertDialog(status);
++                Log.w(TAG, "setSMSSub: sub=" + smsSub + " failed due to sub not activated");
++                return false;
++            }
++            mHandler.sendMessage(mHandler.obtainMessage(EVENT_SET_SMS_SUBSCRIPTION));
++        }
++
++        if (TUNE_AWAY.equals(key)) {
++            mHandler.sendMessage(mHandler.obtainMessage(EVENT_SET_TUNE_AWAY));
++        }
++
++        if (PRIORITY_SUB.equals(key)) {
++            int prioritySubIndex = Integer.parseInt((String) objValue);
++            if (mSubManager.getCurrentSubscription(prioritySubIndex).subStatus
++                    == SubscriptionStatus.SUB_ACTIVATED) {
++                mPrioritySubValue = prioritySubIndex;
++                mHandler.sendMessage(mHandler.obtainMessage(EVENT_SET_PRIORITY_SUBSCRIPTION,
++                        prioritySubIndex));
++            } else {
++                status = getResources().getString(R.string.set_priority_sub_error);
++                displayAlertDialog(status);
++                Log.w(TAG, "setPrioritySub: sub=" + prioritySubIndex
++                        + " failed due to sub not activated");
++                return false;
++            }
++        }
++
++        return true;
++    }
++
++
++    @Override
++    protected Dialog onCreateDialog(int id) {
++        if (id == DIALOG_SET_DATA_SUBSCRIPTION_IN_PROGRESS) {
++            ProgressDialog dialog = new ProgressDialog(this);
++
++            dialog.setMessage(getResources().getString(R.string.set_data_subscription_progress));
++            dialog.setCancelable(false);
++            dialog.setIndeterminate(true);
++
++            return dialog;
++        }
++        return null;
++    }
++
++    @Override
++    protected void onPrepareDialog(int id, Dialog dialog) {
++        if (id == DIALOG_SET_DATA_SUBSCRIPTION_IN_PROGRESS) {
++            // when the dialogs come up, we'll need to indicate that
++            // we're in a busy state to disallow further input.
++            getPreferenceScreen().setEnabled(false);
++        }
++    }
++
++    // This is a method implemented for DialogInterface.OnDismissListener
++    public void onDismiss(DialogInterface dialog) {
++        Log.d(TAG, "onDismiss!");
++    }
++
++    // This is a method implemented for DialogInterface.OnClickListener.
++    public void onClick(DialogInterface dialog, int which) {
++        Log.d(TAG, "onClick!");
++
++        /**
++         * onClick will be called for other dialogs displayed in
++         * Multi SIM settings. But in case when no SIM card info is
++         * available, menu should not be accessible to user. Hence,
++         * after displaying the dialog, finish() is called onClick
++         */
++        if (mIccCardCount == 0) finish();
++    }
++
++    void displayAlertDialog(String msg) {
++        if (!mIsForeground) {
++            Log.d(TAG, "The activitiy is not in foreground. Do not display dialog!!!");
++            return;
++        }
++        Log.d(TAG, "displayErrorDialog!" + msg);
++        new AlertDialog.Builder(this).setMessage(msg)
++               .setTitle(android.R.string.dialog_alert_title)
++               .setIcon(android.R.drawable.ic_dialog_alert)
++               .setPositiveButton(android.R.string.yes, this)
++               .show()
++               .setOnDismissListener(this);
++        }
++
++        private void updateTuneAwayStatus() {
++            boolean tuneAwayValue = mTuneAway.isChecked();
++            mTuneAwayValue = tuneAwayValue;
++            Log.d(TAG," updateTuneAwayStatus change tuneAwayValue to: " + tuneAwayValue);
++            Message setTuneAwayMsg = Message.obtain(mHandler, EVENT_SET_TUNE_AWAY_DONE, null);
++            mPhone.setTuneAway(tuneAwayValue, setTuneAwayMsg);
++        }
++
++        private void updatePrioritySub(int priorityIndex) {
++            Log.d(TAG, "updatePrioritySub change priority sub to: " + priorityIndex);
++            Message setPrioritySubMsg = Message.obtain(mHandler,
++                    EVENT_SET_PRIORITY_SUBSCRIPTION_DONE, null);
++            mPhone.setPrioritySub(priorityIndex, setPrioritySubMsg);
++        }
++
++        private void updateVoiceSub(int subIndex) {
++            Log.d(TAG, "updateVoiceSub change voice sub to: " + subIndex);
++            Message setVoiceSubMsg = Message.obtain(mHandler,
++                    EVENT_SET_VOICE_SUBSCRIPTION_DONE, null);
++            mPhone.setDefaultVoiceSub(subIndex, setVoiceSubMsg);
++        }
++
++        private Handler mHandler = new Handler() {
++        @Override
++        public void handleMessage(Message msg) {
++            AsyncResult ar;
++
++            switch(msg.what) {
++                case EVENT_SET_DATA_SUBSCRIPTION_DONE:
++                    Log.d(TAG, "EVENT_SET_DATA_SUBSCRIPTION_DONE");
++                    if (mIsForeground) {
++                        dismissDialog(DIALOG_SET_DATA_SUBSCRIPTION_IN_PROGRESS);
++                    }
++                    getPreferenceScreen().setEnabled(true);
++                    updateDataSummary();
++
++                    ar = (AsyncResult) msg.obj;
++                    String status;
++                    if (ar.exception != null) {
++                        status = getResources().getString(R.string.set_dds_error)
++                                           + " " + ar.exception.getMessage();
++                        displayAlertDialog(status);
++                        break;
++                    }
++
++                    boolean result = (Boolean)ar.result;
++
++                    Log.d(TAG, "SET_DATA_SUBSCRIPTION_DONE: result = " + result);
++                    if (result == true) {
++                        status = getResources().getString(R.string.set_dds_success);
++                        Toast toast = Toast.makeText(getApplicationContext(), status,
++                                Toast.LENGTH_LONG);
++                        toast.show();
++                    } else {
++                        status = getResources().getString(R.string.set_dds_failed);
++                        displayAlertDialog(status);
++                    }
++
++                    break;
++                case EVENT_SUBSCRIPTION_ACTIVATED:
++                case EVENT_SUBSCRIPTION_DEACTIVATED:
++                    updateMultiSimEntriesForVoice();
++                    updateMultiSimEntriesForSms();
++                    break;
++
++                case EVENT_SET_VOICE_SUBSCRIPTION:
++                    updateVoiceSub(msg.arg1);
++                    break;
++                case EVENT_SET_VOICE_SUBSCRIPTION_DONE:
++                    Log.d(TAG, "EVENT_SET_VOICE_SUBSCRIPTION_DONE");
++                    ar = (AsyncResult) msg.obj;
++                    String sub;
++                    if (ar.exception != null) {
++                        Log.e(TAG, "SET_VOICE_SUBSCRIPTION_DONE: returned Exception: "
++                                + ar.exception);
++                        int voiceSub = MSimPhoneFactory.getVoiceSubscription();
++                        sub = Integer.toString(voiceSub);
++                        mVoice.setValue(sub);
++                        mVoice.setSummary(summaries[voiceSub]);
++                        mVoiceSub = voiceSub;
++                        break;
++                    }
++                    sub = Integer.toString(mVoiceSub);
++                    mVoice.setValue(sub);
++                    mVoice.setSummary(summaries[mVoiceSub]);
++                    MSimPhoneFactory.setVoiceSubscription(mVoiceSub);
++                    break;
++                case EVENT_SET_SMS_SUBSCRIPTION:
++                    updateSmsSummary();
++                    break;
++                case EVENT_SET_TUNE_AWAY:
++                    updateTuneAwayStatus();
++                    break;
++                case EVENT_SET_TUNE_AWAY_DONE:
++                    ar = (AsyncResult) msg.obj;
++                    if (ar.exception != null) {
++                        Log.e(TAG, "SET_TUNE_AWAY_DONE: returned Exception: " + ar.exception);
++                        updateTuneAwayState();
++                        break;
++                    }
++                    Log.d(TAG, "SET_TUNE_AWAY_DONE: mTuneAwayValue = " + mTuneAwayValue);
++                    mTuneAway.setChecked(mTuneAwayValue);
++                    mTuneAway.setSummary(mTuneAwayValue ? "Enable" : "Disable");
++                    MSimPhoneFactory.setTuneAway(mTuneAwayValue);
++                    break;
++                case EVENT_SET_PRIORITY_SUBSCRIPTION:
++                    updatePrioritySub(msg.arg1);
++                    break;
++                case EVENT_SET_PRIORITY_SUBSCRIPTION_DONE:
++                    ar = (AsyncResult) msg.obj;
++                    if (ar.exception != null) {
++                        Log.e(TAG, "EVENT_SET_PRIORITY_SUBSCRIPTION_DONE: returned Exception: "
++                                + ar.exception);
++                        updatePrioritySubState();
++                        break;
++                    }
++                    Log.d(TAG, "EVENT_SET_PRIORITY_SUBSCRIPTION_DONE : mPrioritySubValue "
++                            + mPrioritySubValue);
++                    mPrioritySub.setValue(Integer.toString(mPrioritySubValue));
++                    mPrioritySub.setSummary(summaries[mPrioritySubValue]);
++                    MSimPhoneFactory.setPrioritySubscription(mPrioritySubValue);
++                    break;
++                    default:
++                        Log.w(TAG, "Unknown Event " + msg.what);
++                        break;
++            }
++        }
++    };
++
++    /**
++     * This function will disable menu options when a single SIM / no SIM
++     * is present. This will prevent the user from selecting options that
++     * are not valid when multiple SIM cards are not inserted
++     */
++    private void disableMsimMenu() {
++        Log.d(TAG, "disableMsimMenu");
++        mVoice.setEnabled(false);
++        mVoice.setSelectable(false);
++        mData.setEnabled(false);
++        mData.setSelectable(false);
++
++        mSms.setEnabled(false);
++        mSms.setSelectable(false);
++
++        mPrioritySub.setEnabled(false);
++        mPrioritySub.setSelectable(false);
++
++        mTuneAway.setEnabled(false);
++        mTuneAway.setSelectable(false);
++    }
++
++    private void registerForAirplaneMode() {
++        registerReceiver(mReceiver, mIntentFilter);
++    }
++
++    private void unregisterForAirplaneMode() {
++        unregisterReceiver(mReceiver);
++    }
++}
+diff --git a/src/com/android/settings/RadioInfo.java b/src/com/android/settings/RadioInfo.java
+index df93626..157530d 100644
+--- a/src/com/android/settings/RadioInfo.java
++++ b/src/com/android/settings/RadioInfo.java
+@@ -1090,6 +1090,17 @@ public class RadioInfo extends Activity {
+             "LTE/GSM auto (PRL)",
+             "LTE/GSM/CDMA auto (PRL)",
+             "LTE only",
++            "LTE/WCDMA",
++            "TD-SCDMA only",
++            "TD-SCDMA and WCDMA",
++            "TD-SCDMA and LTE",
++            "TD-SCDMA and GSM",
++            "TD-SCDMA,GSM and LTE",
++            "TD-SCDMA, GSM/WCDMA",
++            "TD-SCDMA, WCDMA and LTE",
++            "TD-SCDMA, GSM/WCDMA and LTE",
++            "TD-SCDMA, GSM/WCDMA, CDMA and EvDo",
++            "TD-SCDMA, LTE, CDMA, EvDo GSM/WCDMA",
+             "Unknown"};
+ 
+     private void log(String s) {
+diff --git a/src/com/android/settings/SecuritySettings.java b/src/com/android/settings/SecuritySettings.java
+index bfeb8d6..5bbed38 100644
+--- a/src/com/android/settings/SecuritySettings.java
++++ b/src/com/android/settings/SecuritySettings.java
+@@ -1,4 +1,6 @@
+ /*
++ * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
++ * Not a Contribution.
+  * Copyright (C) 2007 The Android Open Source Project
+  * Modifications Copyright (C) 2012-2013 CyanogenMod
+  *
+@@ -43,6 +45,7 @@ import android.preference.PreferenceGroup;
+ import android.preference.PreferenceScreen;
+ import android.provider.Settings;
+ import android.security.KeyStore;
++import android.telephony.MSimTelephonyManager;
+ import android.telephony.TelephonyManager;
+ import android.util.Log;
+ 
+@@ -80,6 +83,7 @@ public class SecuritySettings extends RestrictedSettingsFragment
+ 
+     // Misc Settings
+     private static final String KEY_SIM_LOCK = "sim_lock";
++    private static final String KEY_SIM_LOCK_SETTINGS = "sim_lock_settings";
+     private static final String KEY_SHOW_PASSWORD = "show_password";
+     private static final String KEY_CREDENTIAL_STORAGE_TYPE = "credential_storage_type";
+     private static final String KEY_RESET_CREDENTIALS = "reset_credentials";
+@@ -295,17 +299,43 @@ public class SecuritySettings extends RestrictedSettingsFragment
+         if (!isCmSecurity) {
+             addPreferencesFromResource(R.xml.security_settings_misc);
+ 
+-            // Do not display SIM lock for devices without an Icc card
+-            TelephonyManager tm = TelephonyManager.getDefault();
+-            if (!mIsPrimary || !tm.hasIccCard()) {
+-                root.removePreference(root.findPreference(KEY_SIM_LOCK));
++            if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
++                MSimTelephonyManager tm = MSimTelephonyManager.getDefault();
++                int numPhones = MSimTelephonyManager.getDefault().getPhoneCount();
++                boolean disableLock = true;
++                boolean removeLock = true;
++                for (int i = 0; i < numPhones; i++) {
++                    // Do not display SIM lock for devices without an Icc card
++                    if (tm.hasIccCard(i)) {
++                        // Disable SIM lock if sim card is missing or unknown
++                        removeLock = false;
++                        if (!((tm.getSimState(i) == TelephonyManager.SIM_STATE_ABSENT)
++                                || (tm.getSimState(i) == TelephonyManager.SIM_STATE_UNKNOWN)
++                                || (tm.getSimState(i) == TelephonyManager.SIM_STATE_CARD_IO_ERROR))) {
++                            disableLock = false;
++                        }
++                    }
++                }
++                if (removeLock) {
++                    root.removePreference(root.findPreference(KEY_SIM_LOCK));
++                } else {
++                    if (disableLock) {
++                        root.findPreference(KEY_SIM_LOCK).setEnabled(false);
++                    }
++                }
+             } else {
+-                // Disable SIM lock if sim card is missing or unknown
+-                if ((TelephonyManager.getDefault().getSimState() ==
++                // Do not display SIM lock for devices without an Icc card
++                TelephonyManager tm = TelephonyManager.getDefault();
++                if (!mIsPrimary || !tm.hasIccCard()) {
++                    root.removePreference(root.findPreference(KEY_SIM_LOCK));
++                } else {
++                    // Disable SIM lock if sim card is missing or unknown
++                    if ((TelephonyManager.getDefault().getSimState() ==
+                                      TelephonyManager.SIM_STATE_ABSENT) ||
+-                    (TelephonyManager.getDefault().getSimState() ==
++                            (TelephonyManager.getDefault().getSimState() ==
+                                      TelephonyManager.SIM_STATE_UNKNOWN)) {
+-                    root.findPreference(KEY_SIM_LOCK).setEnabled(false);
++                        root.findPreference(KEY_SIM_LOCK).setEnabled(false);
++                    }
+                 }
+             }
+ 
+@@ -313,6 +343,23 @@ public class SecuritySettings extends RestrictedSettingsFragment
+             mShowPassword = (CheckBoxPreference) root.findPreference(KEY_SHOW_PASSWORD);
+             mResetCredentials = root.findPreference(KEY_RESET_CREDENTIALS);
+ 
++            if (root.findPreference(KEY_SIM_LOCK) != null) {
++                // SIM/RUIM lock
++                Preference iccLock = (Preference) root.findPreference(KEY_SIM_LOCK_SETTINGS);
++
++                Intent intent = new Intent();
++                if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
++                    intent.setClassName("com.android.settings",
++                            "com.android.settings.SelectSubscription");
++                    intent.putExtra(SelectSubscription.PACKAGE, "com.android.settings");
++                    intent.putExtra(SelectSubscription.TARGET_CLASS,
++                            "com.android.settings.IccLockSettings");
++                } else {
++                    intent.setClassName("com.android.settings", "com.android.settings.IccLockSettings");
++                }
++                iccLock.setIntent(intent);
++            }
++
+             // Credential storage
+             final UserManager um = (UserManager) getActivity().getSystemService(Context.USER_SERVICE);
+             mKeyStore = KeyStore.getInstance(); // needs to be initialized for onResume()
+diff --git a/src/com/android/settings/SelectSubscription.java b/src/com/android/settings/SelectSubscription.java
+new file mode 100644
+index 0000000..756ff2f
+--- /dev/null
++++ b/src/com/android/settings/SelectSubscription.java
+@@ -0,0 +1,95 @@
++/* Copyright (c) 2010-13, The Linux Foundation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are
++ * met:
++ *     * Redistributions of source code must retain the above copyright
++ *       notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above
++ *       copyright notice, this list of conditions and the following
++ *       disclaimer in the documentation and/or other materials provided
++ *       with the distribution.
++ *     * Neither the name of The Linux Foundation nor the names of its
++ *       contributors may be used to endorse or promote products derived
++ *       from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
++ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
++ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
++ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++package com.android.settings;
++
++import android.app.TabActivity;
++import android.content.Intent;
++import android.os.Bundle;
++import android.preference.Preference;
++import android.preference.PreferenceActivity;
++import android.preference.PreferenceScreen;
++import android.telephony.MSimTelephonyManager;
++import android.util.Log;
++import android.widget.TabHost;
++import android.widget.TabHost.TabSpec;
++
++public class SelectSubscription extends  TabActivity {
++
++    private static final String LOG_TAG = "SelectSubscription";
++    public static final String SUBSCRIPTION_KEY = "subscription";
++    public static final String PACKAGE = "PACKAGE";
++    public static final String TARGET_CLASS = "TARGET_CLASS";
++
++    private String[] tabLabel = {"SUB 1", "SUB 2", "SUB 3"};
++
++    private TabSpec subscriptionPref;
++
++    @Override
++    public void onPause() {
++        super.onPause();
++    }
++
++    /*
++     * Activity class methods
++     */
++
++    @Override
++    protected void onCreate(Bundle icicle) {
++        super.onCreate(icicle);
++        log("Creating activity");
++
++        setContentView(R.layout.select_subscription);
++
++        TabHost tabHost = getTabHost();
++
++        Intent intent =  getIntent();
++        String pkg = intent.getStringExtra(PACKAGE);
++        String targetClass = intent.getStringExtra(TARGET_CLASS);
++
++        int numPhones = MSimTelephonyManager.getDefault().getPhoneCount();
++
++        for (int i = 0; i < numPhones; i++) {
++            subscriptionPref = tabHost.newTabSpec(tabLabel[i]);
++            subscriptionPref.setIndicator(tabLabel[i]);
++            intent = new Intent().setClassName(pkg, targetClass)
++                    .setAction(intent.getAction()).putExtra(SUBSCRIPTION_KEY, i);
++            subscriptionPref.setContent(intent);
++            tabHost.addTab(subscriptionPref);
++        }
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++    }
++
++    private static void log(String msg) {
++        Log.d(LOG_TAG, msg);
++    }
++}
+diff --git a/src/com/android/settings/Settings.java b/src/com/android/settings/Settings.java
+index ab719dc..262a27f 100644
+--- a/src/com/android/settings/Settings.java
++++ b/src/com/android/settings/Settings.java
+@@ -49,6 +49,7 @@ import android.preference.Preference;
+ import android.preference.PreferenceActivity;
+ import android.preference.PreferenceFragment;
+ import android.text.TextUtils;
++import android.telephony.MSimTelephonyManager;
+ import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+@@ -658,6 +659,9 @@ public class Settings extends PreferenceActivity
+                 if (!DevelopmentSettings.isRootForAppsEnabled()) {
+                     target.remove(i);
+                 }
++            } else if (id == R.id.multi_sim_settings) {
++                if (!MSimTelephonyManager.getDefault().isMultiSimEnabled())
++                    target.remove(header);
+             }
+ 
+             if (i < target.size() && target.get(i) == header
+diff --git a/src/com/android/settings/WirelessSettings.java b/src/com/android/settings/WirelessSettings.java
+index 9614572..c18354b 100644
+--- a/src/com/android/settings/WirelessSettings.java
++++ b/src/com/android/settings/WirelessSettings.java
+@@ -1,4 +1,6 @@
+ /*
++ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
++ * Not a Contribution.
+  * Copyright (C) 2009 The Android Open Source Project
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+@@ -43,6 +45,7 @@ import android.provider.Settings;
+ import android.telephony.TelephonyManager;
+ import android.text.TextUtils;
+ import android.util.Log;
++import android.telephony.MSimTelephonyManager;
+ 
+ import com.android.internal.telephony.SmsApplication;
+ import com.android.internal.telephony.SmsApplication.SmsApplicationData;
+@@ -267,6 +270,23 @@ public class WirelessSettings extends RestrictedSettingsFragment
+ 
+         final Activity activity = getActivity();
+         mAirplaneModePreference = (CheckBoxPreference) findPreference(KEY_TOGGLE_AIRPLANE);
++
++        if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
++            // Mobile Networks menu will traverse to Select Subscription menu.
++            PreferenceScreen manageSub =
++                    (PreferenceScreen) findPreference(KEY_MOBILE_NETWORK_SETTINGS);
++
++            if (manageSub != null) {
++                Intent intent = manageSub.getIntent();
++                intent.setClassName("com.android.phone",
++                                    "com.android.phone.SelectSubscription");
++                intent.putExtra(SelectSubscription.PACKAGE,
++                                    "com.android.phone");
++                intent.putExtra(SelectSubscription.TARGET_CLASS,
++                                "com.android.phone.MSimMobileNetworkSubSettings");
++            }
++        }
++
+         CheckBoxPreference nfc = (CheckBoxPreference) findPreference(KEY_TOGGLE_NFC);
+         PreferenceScreen androidBeam = (PreferenceScreen) findPreference(KEY_ANDROID_BEAM_SETTINGS);
+         CheckBoxPreference nsd = (CheckBoxPreference) findPreference(KEY_TOGGLE_NSD);
+diff --git a/src/com/android/settings/deviceinfo/Status.java b/src/com/android/settings/deviceinfo/Status.java
+index 0155729..724a932 100644
+--- a/src/com/android/settings/deviceinfo/Status.java
++++ b/src/com/android/settings/deviceinfo/Status.java
+@@ -397,6 +397,20 @@ public class Status extends PreferenceActivity {
+              }
+     }
+ 
++    private String getServiceStateString(int state) {
++        switch (state) {
++            case ServiceState.STATE_IN_SERVICE:
++                return mRes.getString(R.string.radioInfo_service_in);
++            case ServiceState.STATE_OUT_OF_SERVICE:
++            case ServiceState.STATE_EMERGENCY_ONLY:
++                return mRes.getString(R.string.radioInfo_service_out);
++            case ServiceState.STATE_POWER_OFF:
++                return mRes.getString(R.string.radioInfo_service_off);
++            default:
++                return mRes.getString(R.string.radioInfo_unknown);
++        }
++    }
++
+     private void updateNetworkType() {
+         // Whether EDGE, UMTS, etc...
+         String networktype = null;
+@@ -429,23 +443,13 @@ public class Status extends PreferenceActivity {
+     }
+ 
+     private void updateServiceState(ServiceState serviceState) {
+-        int state = serviceState.getState();
+-        String display = mRes.getString(R.string.radioInfo_unknown);
++        int voiceState = serviceState.getState();
++        String voiceDisplay = getServiceStateString(voiceState);
+ 
+-        switch (state) {
+-            case ServiceState.STATE_IN_SERVICE:
+-                display = mRes.getString(R.string.radioInfo_service_in);
+-                break;
+-            case ServiceState.STATE_OUT_OF_SERVICE:
+-            case ServiceState.STATE_EMERGENCY_ONLY:
+-                display = mRes.getString(R.string.radioInfo_service_out);
+-                break;
+-            case ServiceState.STATE_POWER_OFF:
+-                display = mRes.getString(R.string.radioInfo_service_off);
+-                break;
+-        }
++        int dataState = serviceState.getDataRegState();
++        String dataDisplay = getServiceStateString(dataState);
+ 
+-        setSummaryText(KEY_SERVICE_STATE, display);
++        setSummaryText(KEY_SERVICE_STATE, "Voice: " + voiceDisplay + " / Data: " + dataDisplay);
+ 
+         if (serviceState.getRoaming()) {
+             setSummaryText(KEY_ROAMING_STATE, mRes.getString(R.string.radioInfo_roaming_in));
+diff --git a/src/com/android/settings/deviceinfo/msim/MSimStatus.java b/src/com/android/settings/deviceinfo/msim/MSimStatus.java
+new file mode 100644
+index 0000000..845596e
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/msim/MSimStatus.java
+@@ -0,0 +1,379 @@
++/*
++ * Copyright (c) 2011-13, The Linux Foundation. All rights reserved
++ * Not a Contribution.
++ * Copyright (C) 2008 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.deviceinfo;
++
++import android.bluetooth.BluetoothAdapter;
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.content.res.Resources;
++import android.net.ConnectivityManager;
++import android.net.NetworkInfo;
++import android.net.wifi.WifiInfo;
++import android.net.wifi.WifiManager;
++import android.os.BatteryManager;
++import android.os.Build;
++import android.os.Bundle;
++import android.os.Handler;
++import android.os.Message;
++import android.os.SystemClock;
++import android.os.SystemProperties;
++import android.preference.Preference;
++import android.preference.PreferenceActivity;
++import android.preference.PreferenceScreen;
++import android.telephony.MSimTelephonyManager;
++import android.telephony.PhoneNumberUtils;
++import android.telephony.PhoneStateListener;
++import android.telephony.ServiceState;
++import android.telephony.TelephonyManager;
++import android.text.TextUtils;
++import android.util.Log;
++
++import com.android.internal.telephony.Phone;
++import com.android.internal.telephony.PhoneFactory;
++import com.android.internal.telephony.PhoneStateIntentReceiver;
++import com.android.internal.telephony.TelephonyProperties;
++import com.android.settings.R;
++import com.android.settings.SelectSubscription;
++import com.android.settings.Utils;
++
++import java.lang.ref.WeakReference;
++
++/**
++ * Display the following information
++ * # Battery Strength  : TODO
++ * # Uptime
++ * # Awake Time
++ * # XMPP/buzz/tickle status : TODO
++ *
++ */
++public class MSimStatus extends PreferenceActivity {
++
++    private static final String KEY_DATA_STATE = "data_state";
++    private static final String KEY_NETWORK_TYPE = "network_type";
++    private static final String KEY_BATTERY_STATUS = "battery_status";
++    private static final String KEY_BATTERY_LEVEL = "battery_level";
++    private static final String KEY_IP_ADDRESS = "wifi_ip_address";
++    private static final String KEY_WIFI_MAC_ADDRESS = "wifi_mac_address";
++    private static final String KEY_BT_ADDRESS = "bt_address";
++    private static final String KEY_SERIAL_NUMBER = "serial_number";
++    private static final String KEY_WIMAX_MAC_ADDRESS = "wimax_mac_address";
++    private static final String[] PHONE_RELATED_ENTRIES = {
++        KEY_DATA_STATE,
++        KEY_NETWORK_TYPE
++    };
++
++    private static final int EVENT_UPDATE_STATS = 500;
++    private static final String BUTTON_SELECT_SUB_KEY = "button_aboutphone_msim_status";
++
++    private MSimTelephonyManager mTelephonyManager;
++    private Phone mPhone = null;
++    private PhoneStateIntentReceiver mPhoneStateReceiver;
++    private PhoneStateListener[] mPhoneStateListener;
++    private Resources mRes;
++    private Preference mUptime;
++
++    private static String sUnknown;
++    private int mNumPhones = 0;
++
++    private Preference mBatteryStatus;
++    private Preference mBatteryLevel;
++    private int mDataState = TelephonyManager.DATA_DISCONNECTED;
++
++    private Handler mHandler;
++
++    private static class MyHandler extends Handler {
++        private WeakReference<MSimStatus> mStatus;
++
++        public MyHandler(MSimStatus activity) {
++            mStatus = new WeakReference<MSimStatus>(activity);
++        }
++
++        @Override
++        public void handleMessage(Message msg) {
++            MSimStatus status = mStatus.get();
++            if (status == null) {
++                return;
++            }
++
++            switch (msg.what) {
++                case EVENT_UPDATE_STATS:
++                    status.updateTimes();
++                    sendEmptyMessageDelayed(EVENT_UPDATE_STATS, 1000);
++                    break;
++            }
++        }
++    }
++
++    private BroadcastReceiver mBatteryInfoReceiver = new BroadcastReceiver() {
++
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            String action = intent.getAction();
++            if (Intent.ACTION_BATTERY_CHANGED.equals(action)) {
++                mBatteryLevel.setSummary(Utils.getBatteryPercentage(intent));
++                mBatteryStatus.setSummary(Utils.getBatteryStatus(getResources(), intent));
++            }
++        }
++    };
++
++    @Override
++    protected void onCreate(Bundle icicle) {
++        super.onCreate(icicle);
++        Preference removablePref;
++
++        mHandler = new MyHandler(this);
++
++        mTelephonyManager = (MSimTelephonyManager)getSystemService(MSIM_TELEPHONY_SERVICE);
++
++        addPreferencesFromResource(R.xml.device_info_msim_status);
++
++        mNumPhones = MSimTelephonyManager.getDefault().getPhoneCount();
++        mPhoneStateListener = new PhoneStateListener[mNumPhones];
++
++        for (int i=0; i < mNumPhones; i++) {
++            mPhoneStateListener[i] = getPhoneStateListener(i);
++            mTelephonyManager.listen(mPhoneStateListener[i],
++                            PhoneStateListener.LISTEN_DATA_CONNECTION_STATE);
++        }
++
++        mBatteryLevel = findPreference(KEY_BATTERY_LEVEL);
++        mBatteryStatus = findPreference(KEY_BATTERY_STATUS);
++
++        PreferenceScreen selectSub = (PreferenceScreen) findPreference(BUTTON_SELECT_SUB_KEY);
++        if (selectSub != null) {
++            Intent intent = selectSub.getIntent();
++            intent.putExtra(SelectSubscription.PACKAGE, "com.android.settings");
++            intent.putExtra(SelectSubscription.TARGET_CLASS,
++                    "com.android.settings.deviceinfo.MSimSubscriptionStatus");
++        }
++
++        mRes = getResources();
++        if (sUnknown == null) {
++            sUnknown = mRes.getString(R.string.device_info_default);
++        }
++
++        mUptime = findPreference("up_time");
++
++        if (Utils.isWifiOnly(getApplicationContext())) {
++            for (String key : PHONE_RELATED_ENTRIES) {
++                removePreferenceFromScreen(key);
++            }
++        }
++
++        setWimaxStatus();
++        setWifiStatus();
++        setBtStatus();
++        setIpAddressStatus();
++
++        String serial = Build.SERIAL;
++        if (serial != null && !serial.equals("")) {
++            setSummaryText(KEY_SERIAL_NUMBER, serial);
++        } else {
++            removePreferenceFromScreen(KEY_SERIAL_NUMBER);
++        }
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++
++        if (!Utils.isWifiOnly(getApplicationContext())) {
++            updateDataState();
++            for (int i=0; i < mNumPhones; i++) {
++                mTelephonyManager.listen(mPhoneStateListener[i],
++                        PhoneStateListener.LISTEN_DATA_CONNECTION_STATE);
++            }
++        }
++        registerReceiver(mBatteryInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
++        mHandler.sendEmptyMessage(EVENT_UPDATE_STATS);
++    }
++
++    @Override
++    public void onPause() {
++        super.onPause();
++
++        if (!Utils.isWifiOnly(getApplicationContext())) {
++            for (int i=0; i < mNumPhones; i++) {
++                mTelephonyManager.listen(mPhoneStateListener[i], PhoneStateListener.LISTEN_NONE);
++            }
++        }
++        unregisterReceiver(mBatteryInfoReceiver);
++        mHandler.removeMessages(EVENT_UPDATE_STATS);
++    }
++
++    private PhoneStateListener getPhoneStateListener(int subscription) {
++        PhoneStateListener phoneStateListener = new PhoneStateListener(subscription) {
++            @Override
++            public void onDataConnectionStateChanged(int state) {
++                mDataState = state;
++                updateDataState();
++                if (mSubscription ==
++                        MSimTelephonyManager.getDefault().getPreferredDataSubscription()) {
++                    updateNetworkType(mSubscription);
++                }
++            }
++        };
++        return phoneStateListener;
++    }
++
++    /**
++     * Removes the specified preference, if it exists.
++     * @param key the key for the Preference item
++     */
++    private void removePreferenceFromScreen(String key) {
++        Preference pref = findPreference(key);
++        if (pref != null) {
++            getPreferenceScreen().removePreference(pref);
++        }
++    }
++
++    /**
++     * @param preference The key for the Preference item
++     * @param property The system property to fetch
++     * @param alt The default value, if the property doesn't exist
++     */
++    private void setSummary(String preference, String property, String alt) {
++        try {
++            findPreference(preference).setSummary(
++                    SystemProperties.get(property, alt));
++        } catch (RuntimeException e) {
++
++        }
++    }
++
++    private void setSummaryText(String preference, String text) {
++            if (TextUtils.isEmpty(text)) {
++                 text = sUnknown;
++            }
++             // some preferences may be missing
++             if (findPreference(preference) != null) {
++                 findPreference(preference).setSummary(text);
++             }
++    }
++
++    private void updateNetworkType(int subscription) {
++        // Whether EDGE, UMTS, etc...
++        String networktype = null;
++        if (TelephonyManager.NETWORK_TYPE_UNKNOWN !=
++                mTelephonyManager.getNetworkType(subscription)) {
++            networktype = mTelephonyManager.getNetworkTypeName(subscription);
++        }
++        setSummaryText(KEY_NETWORK_TYPE, networktype);
++    }
++
++    private void updateDataState() {
++        String display = mRes.getString(R.string.radioInfo_unknown);
++
++        switch (mDataState) {
++            case TelephonyManager.DATA_CONNECTED:
++                display = mRes.getString(R.string.radioInfo_data_connected);
++                break;
++            case TelephonyManager.DATA_SUSPENDED:
++                display = mRes.getString(R.string.radioInfo_data_suspended);
++                break;
++            case TelephonyManager.DATA_CONNECTING:
++                display = mRes.getString(R.string.radioInfo_data_connecting);
++                break;
++            case TelephonyManager.DATA_DISCONNECTED:
++                display = mRes.getString(R.string.radioInfo_data_disconnected);
++                break;
++        }
++
++        setSummaryText(KEY_DATA_STATE, display);
++    }
++
++    private void setWimaxStatus() {
++        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
++        NetworkInfo ni = cm.getNetworkInfo(ConnectivityManager.TYPE_WIMAX);
++
++        if (ni == null) {
++            PreferenceScreen root = getPreferenceScreen();
++            Preference ps = (Preference) findPreference(KEY_WIMAX_MAC_ADDRESS);
++            if (ps != null) root.removePreference(ps);
++        } else {
++            Preference wimaxMacAddressPref = findPreference(KEY_WIMAX_MAC_ADDRESS);
++            String macAddress = SystemProperties.get("net.wimax.mac.address",
++                    getString(R.string.status_unavailable));
++            wimaxMacAddressPref.setSummary(macAddress);
++        }
++    }
++    private void setWifiStatus() {
++        WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
++        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
++
++        Preference wifiMacAddressPref = findPreference(KEY_WIFI_MAC_ADDRESS);
++
++        String macAddress = wifiInfo == null ? null : wifiInfo.getMacAddress();
++        wifiMacAddressPref.setSummary(!TextUtils.isEmpty(macAddress) ? macAddress
++                : getString(R.string.status_unavailable));
++    }
++
++    private void setIpAddressStatus() {
++        Preference ipAddressPref = findPreference(KEY_IP_ADDRESS);
++        String ipAddress = Utils.getDefaultIpAddresses(this);
++        if (ipAddress != null) {
++            ipAddressPref.setSummary(ipAddress);
++        } else {
++            ipAddressPref.setSummary(getString(R.string.status_unavailable));
++        }
++    }
++
++    private void setBtStatus() {
++        BluetoothAdapter bluetooth = BluetoothAdapter.getDefaultAdapter();
++        Preference btAddressPref = findPreference(KEY_BT_ADDRESS);
++
++        if (bluetooth == null) {
++            // device not BT capable
++            getPreferenceScreen().removePreference(btAddressPref);
++        } else {
++            String address = bluetooth.isEnabled() ? bluetooth.getAddress() : null;
++            btAddressPref.setSummary(!TextUtils.isEmpty(address) ? address
++                    : getString(R.string.status_unavailable));
++        }
++    }
++
++    void updateTimes() {
++        long at = SystemClock.uptimeMillis() / 1000;
++        long ut = SystemClock.elapsedRealtime() / 1000;
++
++        if (ut == 0) {
++            ut = 1;
++        }
++
++        mUptime.setSummary(convert(ut));
++    }
++
++    private String pad(int n) {
++        if (n >= 10) {
++            return String.valueOf(n);
++        } else {
++            return "0" + String.valueOf(n);
++        }
++    }
++
++    private String convert(long t) {
++        int s = (int)(t % 60);
++        int m = (int)((t / 60) % 60);
++        int h = (int)((t / 3600));
++
++        return h + ":" + pad(m) + ":" + pad(s);
++    }
++}
+diff --git a/src/com/android/settings/deviceinfo/msim/MSimSubscriptionStatus.java b/src/com/android/settings/deviceinfo/msim/MSimSubscriptionStatus.java
+new file mode 100644
+index 0000000..a836493
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/msim/MSimSubscriptionStatus.java
+@@ -0,0 +1,365 @@
++/*
++ * Copyright (c) 2011-13 The Linux Foundation. All rights reserved
++ * Not a Contribution.
++ * Copyright (C) 2008 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.deviceinfo;
++
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.content.res.Resources;
++import android.os.Bundle;
++import android.os.Message;
++import android.os.SystemProperties;
++import android.os.UserHandle;
++import android.preference.Preference;
++import android.preference.PreferenceActivity;
++import android.telephony.CellBroadcastMessage;
++import android.telephony.MSimTelephonyManager;
++import android.telephony.PhoneNumberUtils;
++import android.telephony.PhoneStateListener;
++import android.telephony.ServiceState;
++import android.telephony.SignalStrength;
++import android.telephony.TelephonyManager;
++import android.text.TextUtils;
++import android.util.Log;
++
++import com.android.internal.telephony.MSimConstants;
++import com.android.internal.telephony.Phone;
++import com.android.internal.telephony.PhoneConstants;
++
++import com.android.settings.R;
++import com.android.settings.Utils;
++import com.android.settings.SelectSubscription;
++import com.codeaurora.telephony.msim.MSimPhoneFactory;
++
++import java.lang.ref.WeakReference;
++
++/**
++ * Display the following information
++ * # Phone Number
++ * # Network
++ * # Roaming
++ * # Device Id (IMEI in GSM and MEID in CDMA)
++ * # Network type
++ * # Signal Strength
++ * # Awake Time
++ * # XMPP/buzz/tickle status : TODO
++ *
++ */
++public class MSimSubscriptionStatus extends PreferenceActivity {
++
++    private static final String KEY_SERVICE_STATE = "service_state";
++    private static final String KEY_OPERATOR_NAME = "operator_name";
++    private static final String KEY_ROAMING_STATE = "roaming_state";
++    private static final String KEY_PHONE_NUMBER = "number";
++    private static final String KEY_IMEI_SV = "imei_sv";
++    private static final String KEY_IMEI = "imei";
++    private static final String KEY_PRL_VERSION = "prl_version";
++    private static final String KEY_MIN_NUMBER = "min_number";
++    private static final String KEY_ESN_NUMBER = "esn_number";
++    private static final String KEY_MEID_NUMBER = "meid_number";
++    private static final String KEY_SIGNAL_STRENGTH = "signal_strength";
++    private static final String KEY_ICC_ID = "icc_id";
++    private static final String KEY_LATEST_AREA_INFO = "latest_area_info";
++
++    private static final String[] PHONE_RELATED_ENTRIES = {
++        KEY_SERVICE_STATE,
++        KEY_OPERATOR_NAME,
++        KEY_ROAMING_STATE,
++        KEY_PHONE_NUMBER,
++        KEY_IMEI,
++        KEY_IMEI_SV,
++        KEY_PRL_VERSION,
++        KEY_MIN_NUMBER,
++        KEY_ESN_NUMBER,
++        KEY_MEID_NUMBER,
++        KEY_SIGNAL_STRENGTH,
++        KEY_ICC_ID,
++        KEY_LATEST_AREA_INFO
++    };
++
++    static final String CB_AREA_INFO_RECEIVED_ACTION =
++            "android.cellbroadcastreceiver.CB_AREA_INFO_RECEIVED";
++
++    static final String GET_LATEST_CB_AREA_INFO_ACTION =
++            "android.cellbroadcastreceiver.GET_LATEST_CB_AREA_INFO";
++
++    // Require the sender to have this permission to prevent third-party spoofing.
++    static final String CB_AREA_INFO_SENDER_PERMISSION =
++            "android.permission.RECEIVE_EMERGENCY_BROADCAST";
++
++    private MSimTelephonyManager mTelephonyManager;
++    private Phone mPhone = null;
++    private Resources mRes;
++    private Preference mSigStrength;
++    SignalStrength mSignalStrength;
++    ServiceState mServiceState;
++    private int mSub = 0;
++    private int mDataState = TelephonyManager.DATA_DISCONNECTED;
++    private PhoneStateListener mPhoneStateListener;
++
++    private static String sUnknown;
++
++    private BroadcastReceiver mAreaInfoReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            String action = intent.getAction();
++            if (CB_AREA_INFO_RECEIVED_ACTION.equals(action)) {
++                Bundle extras = intent.getExtras();
++                if (extras == null) {
++                    return;
++                }
++                CellBroadcastMessage cbMessage = (CellBroadcastMessage) extras.get("message");
++                if (cbMessage != null && cbMessage.getServiceCategory() == 50) {
++                    String latestAreaInfo = cbMessage.getMessageBody();
++                    updateAreaInfo(latestAreaInfo);
++                }
++            }
++        }
++    };
++
++    @Override
++    protected void onCreate(Bundle icicle) {
++        super.onCreate(icicle);
++        Preference removablePref;
++
++        mTelephonyManager = (MSimTelephonyManager)getSystemService(MSIM_TELEPHONY_SERVICE);
++
++        addPreferencesFromResource(R.xml.device_info_subscription_status);
++
++        // getting selected subscription
++        mSub = getIntent().getIntExtra(SelectSubscription.SUBSCRIPTION_KEY, 0);
++        Log.d("Status","OnCreate mSub =" + mSub);
++
++        mPhoneStateListener = getPhoneStateListener(mSub);
++        mTelephonyManager.listen(mPhoneStateListener,
++                                PhoneStateListener.LISTEN_SERVICE_STATE
++                                | PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
++
++        mRes = getResources();
++        if (sUnknown == null) {
++            sUnknown = mRes.getString(R.string.device_info_default);
++        }
++
++        mPhone = MSimPhoneFactory.getPhone(mSub);
++        // Note - missing in zaku build, be careful later...
++        mSigStrength = findPreference(KEY_SIGNAL_STRENGTH);
++
++        if (Utils.isWifiOnly(getApplicationContext())) {
++            for (String key : PHONE_RELATED_ENTRIES) {
++                removePreferenceFromScreen(key);
++            }
++        } else {
++
++            if ((SystemProperties.getBoolean("ro.config.multimode_cdma", false))
++                    || (mPhone.getPhoneName().equals("CDMA"))) {
++                setSummaryText(KEY_PRL_VERSION, mPhone.getCdmaPrlVersion());
++            } else {
++                // device does not support CDMA, do not display PRL
++                removePreferenceFromScreen(KEY_PRL_VERSION);
++            }
++
++            // NOTE "imei" is the "Device ID" since it represents
++            //  the IMEI in GSM and the MEID in CDMA
++            if (mPhone.getPhoneName().equals("CDMA")) {
++                setSummaryText(KEY_ESN_NUMBER, mPhone.getEsn());
++                setSummaryText(KEY_MEID_NUMBER, mPhone.getMeid());
++                setSummaryText(KEY_MIN_NUMBER, mPhone.getCdmaMin());
++                if (getResources().getBoolean(R.bool.config_msid_enable)) {
++                    findPreference(KEY_MIN_NUMBER).setTitle(R.string.status_msid_number);
++                }
++
++                removePreferenceFromScreen(KEY_IMEI_SV);
++
++                if (mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
++                    // Show ICC ID and IMEI for LTE device
++                    setSummaryText(KEY_ICC_ID, mPhone.getIccSerialNumber());
++                    setSummaryText(KEY_IMEI, mPhone.getImei());
++                } else {
++                    // device is not GSM/UMTS, do not display GSM/UMTS features
++                    // check Null in case no specified preference in overlay xml
++                    removePreferenceFromScreen(KEY_IMEI);
++                    removePreferenceFromScreen(KEY_ICC_ID);
++                }
++            } else {
++                setSummaryText(KEY_IMEI, mPhone.getDeviceId());
++
++                setSummaryText(KEY_IMEI_SV,mPhone.getDeviceSvn());
++
++                // device is not CDMA, do not display CDMA features
++                // check Null in case no specified preference in overlay xml
++                removePreferenceFromScreen(KEY_ESN_NUMBER);
++                removePreferenceFromScreen(KEY_MEID_NUMBER);
++                removePreferenceFromScreen(KEY_MIN_NUMBER);
++                removePreferenceFromScreen(KEY_ICC_ID);
++            }
++
++            String rawNumber = mPhone.getLine1Number();  // may be null or empty
++            String formattedNumber = null;
++            if (!TextUtils.isEmpty(rawNumber)) {
++                formattedNumber = PhoneNumberUtils.formatNumber(rawNumber);
++            }
++            // If formattedNumber is null or empty, it'll display as "Unknown".
++            setSummaryText(KEY_PHONE_NUMBER, formattedNumber);
++        }
++
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++
++        if (!Utils.isWifiOnly(getApplicationContext())) {
++            mTelephonyManager.listen(mPhoneStateListener,
++                                     PhoneStateListener.LISTEN_SERVICE_STATE
++                                     | PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
++            updateSignalStrength();
++            updateServiceState();
++            registerReceiver(mAreaInfoReceiver, new IntentFilter(CB_AREA_INFO_RECEIVED_ACTION),
++                    CB_AREA_INFO_SENDER_PERMISSION, null);
++            // Ask CellBroadcastReceiver to broadcast the latest area info received
++            Intent getLatestIntent = new Intent(GET_LATEST_CB_AREA_INFO_ACTION);
++            getLatestIntent.putExtra(MSimConstants.SUBSCRIPTION_KEY, mSub);
++            sendBroadcastAsUser(getLatestIntent, UserHandle.ALL,
++                    CB_AREA_INFO_SENDER_PERMISSION);
++
++        }
++    }
++
++    @Override
++    public void onPause() {
++        super.onPause();
++
++        if (!Utils.isWifiOnly(getApplicationContext())) {
++            mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
++            unregisterReceiver(mAreaInfoReceiver);
++        }
++    }
++
++    /**
++     * Removes the specified preference, if it exists.
++     * @param key the key for the Preference item
++     */
++    private void removePreferenceFromScreen(String key) {
++        Preference pref = findPreference(key);
++        if (pref != null) {
++            getPreferenceScreen().removePreference(pref);
++        }
++    }
++
++    private PhoneStateListener getPhoneStateListener(int subscription) {
++        PhoneStateListener phoneStateListener = new PhoneStateListener(subscription) {
++            @Override
++            public void onSignalStrengthsChanged(SignalStrength signalStrength) {
++                mSignalStrength = signalStrength;
++                updateSignalStrength();
++            }
++            @Override
++            public void onServiceStateChanged(ServiceState state) {
++                mServiceState = state;
++                updateServiceState();
++            }
++        };
++        return phoneStateListener;
++    }
++    /**
++     * @param preference The key for the Preference item
++     * @param property The system property to fetch
++     * @param alt The default value, if the property doesn't exist
++     */
++    private void setSummary(String preference, String property, String alt) {
++        try {
++            findPreference(preference).setSummary(
++                    SystemProperties.get(property, alt));
++        } catch (RuntimeException e) {
++
++        }
++    }
++
++    private void setSummaryText(String preference, String text) {
++            if (TextUtils.isEmpty(text)) {
++               text = sUnknown;
++             }
++             // some preferences may be missing
++             if (findPreference(preference) != null) {
++                 findPreference(preference).setSummary(text);
++             }
++    }
++
++    private void updateServiceState() {
++        String display = mRes.getString(R.string.radioInfo_unknown);
++
++        if (mServiceState != null) {
++            int state = mServiceState.getState();
++
++            switch (state) {
++                case ServiceState.STATE_IN_SERVICE:
++                    display = mRes.getString(R.string.radioInfo_service_in);
++                    break;
++                case ServiceState.STATE_OUT_OF_SERVICE:
++                case ServiceState.STATE_EMERGENCY_ONLY:
++                    display = mRes.getString(R.string.radioInfo_service_out);
++                    break;
++                case ServiceState.STATE_POWER_OFF:
++                    display = mRes.getString(R.string.radioInfo_service_off);
++                    break;
++            }
++
++            setSummaryText(KEY_SERVICE_STATE, display);
++
++            if (mServiceState.getRoaming()) {
++                setSummaryText(KEY_ROAMING_STATE, mRes.getString(R.string.radioInfo_roaming_in));
++            } else {
++                setSummaryText(KEY_ROAMING_STATE, mRes.getString(R.string.radioInfo_roaming_not));
++            }
++            setSummaryText(KEY_OPERATOR_NAME, mServiceState.getOperatorAlphaLong());
++        }
++    }
++
++    private void updateAreaInfo(String areaInfo) {
++        if (areaInfo != null) {
++            setSummaryText(KEY_LATEST_AREA_INFO, areaInfo);
++        }
++    }
++
++    void updateSignalStrength() {
++
++        if (mSignalStrength != null) {
++            int state = mServiceState.getState();
++            Resources r = getResources();
++
++            if ((ServiceState.STATE_OUT_OF_SERVICE == state) ||
++                    (ServiceState.STATE_POWER_OFF == state)) {
++                mSigStrength.setSummary("0");
++            }
++
++            int signalDbm = mSignalStrength.getDbm();
++            if (-1 == signalDbm) signalDbm = 0;
++
++            int signalAsu = mSignalStrength.getGsmSignalStrength();
++            if (-1 == signalAsu) signalAsu = 0;
++
++            mSigStrength.setSummary(String.valueOf(signalDbm) + " "
++                        + r.getString(R.string.radioInfo_display_dbm) + "   "
++                        + String.valueOf(signalAsu) + " "
++                        + r.getString(R.string.radioInfo_display_asu));
++        }
++    }
++
++}
+-- 
+1.8.1.2
+

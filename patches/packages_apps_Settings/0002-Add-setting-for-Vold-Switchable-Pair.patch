@@ -1,14 +1,8 @@
-From a6fe7d0a6eb258899457011c0186164eba1ada46 Mon Sep 17 00:00:00 2001
-From: dhacker29 <davidhackerdvm@gmail.com>
-Date: Sat, 17 Aug 2013 16:35:18 -0500
-Subject: [PATCH] Add setting for Vold Switchable Pair (2/2)
+From a73753e56800c55b1c444b9b0c5355fa5c7ae3f2 Mon Sep 17 00:00:00 2001
+From: xjljian <xjlxxx3@gmail.com>
+Date: Sun, 23 Feb 2014 10:31:57 +0800
+Subject: [PATCH 2/2] Add setting for Vold Switchable Pair
 
-This will be hidden unless the device has non-emulated internal storage
-and an external SD, in which case persist.sys.vold.switchablepair will be
-set automaticaly.  This does away with the need for ro.vold.switchablepair
-to be set in the build.prop.
-
-Change-Id: Id83fc90d771ca3a7179f2c50d0ae828eb3dbaa9f
 ---
  AndroidManifest.xml                             |  1 +
  res/values/cm_strings.xml                       |  7 ++++
@@ -17,10 +11,10 @@ Change-Id: Id83fc90d771ca3a7179f2c50d0ae828eb3dbaa9f
  4 files changed, 66 insertions(+), 1 deletion(-)
 
 diff --git a/AndroidManifest.xml b/AndroidManifest.xml
-index 4b3b859..3167c37 100644
+index 9b7b224..7a50b72 100644
 --- a/AndroidManifest.xml
 +++ b/AndroidManifest.xml
-@@ -69,6 +69,7 @@
+@@ -70,6 +70,7 @@
      <uses-permission android:name="android.permission.MANAGE_DEVICE_ADMINS" />
      <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
      <uses-permission android:name="android.permission.CHANGE_PRIVACY_GUARD_STATE" />
@@ -29,10 +23,10 @@ index 4b3b859..3167c37 100644
      <permission
          android:name="android.permission.REQUEST_SUPERUSER"
 diff --git a/res/values/cm_strings.xml b/res/values/cm_strings.xml
-index 6fa1504..1867762 100644
+index e53f512..5781aa7 100644
 --- a/res/values/cm_strings.xml
 +++ b/res/values/cm_strings.xml
-@@ -611,6 +611,13 @@ two in order to insert additional control points. \'Remove\' deletes the selecte
+@@ -664,6 +664,13 @@
      <string name="adb_notify">USB debugging notify</string>
      <string name="adb_notify_summary">Display a notification when USB debugging is connected</string>
  
@@ -63,7 +57,7 @@ index e905f39..2010b2c 100644
  <!-- Preference categories are dynamically created based on the list of available storage volumes -->
  
 diff --git a/src/com/android/settings/deviceinfo/Memory.java b/src/com/android/settings/deviceinfo/Memory.java
-index 999611d..92d9863 100644
+index 52fef32..5b79865 100644
 --- a/src/com/android/settings/deviceinfo/Memory.java
 +++ b/src/com/android/settings/deviceinfo/Memory.java
 @@ -32,16 +32,20 @@ import android.hardware.usb.UsbManager;
@@ -126,7 +120,7 @@ index 999611d..92d9863 100644
          addCategory(StorageVolumePreferenceCategory.buildForInternal(context));
  
          final StorageVolume[] storageVolumes = mStorageManager.getVolumeList();
-@@ -214,7 +243,13 @@ public class Memory extends SettingsPreferenceFragment {
+@@ -213,7 +242,13 @@ public class Memory extends SettingsPreferenceFragment {
  
      @Override
      public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
@@ -141,7 +135,7 @@ index 999611d..92d9863 100644
              ConfirmClearCacheFragment.show(this);
              return true;
          }
-@@ -424,4 +459,21 @@ public class Memory extends SettingsPreferenceFragment {
+@@ -423,4 +458,21 @@ public class Memory extends SettingsPreferenceFragment {
              return builder.create();
          }
      }
